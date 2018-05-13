@@ -45,13 +45,9 @@ def updateGlobalMap(viewmap, CurrPos ):
             
            # else if the current viewmap reading is at the centre,
            # that is stored as agent directions.  
-            elif i == 2 and j == 2:
-                CurrAgentDir = element
+
                 
     
-    
-    
-    return CurrAgentDir
                 
 # Reference: https://artemrudenko.wordpress.com/2014/08/28/python-rotate-2d-arraymatrix-90-degrees-one-liner/
 def rotate(matrix, degree):

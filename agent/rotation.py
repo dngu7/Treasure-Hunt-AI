@@ -5,7 +5,7 @@ from pprint import pprint
 def rotate(matrix, degree):
     if abs(degree) not in [0, 90, 180, 270, 360]:
         # raise error or just return nothing or original
-        print(degree)
+        #print(degree)
         return matrix
     if degree == 0:
         z = matrix
@@ -28,7 +28,7 @@ def printMatrix(matrix):
                 print(matrix[i][j], end="")
             print('')
     
-matrix = [[1,2,3], [4,5,6], [7,8,9]]
+#matrix = [[1,2,3], [4,5,6], [7,8,9]]
 
 
-printMatrix( rotate(matrix, 180))
+#printMatrix( rotate(matrix, 180))
