@@ -102,7 +102,9 @@ public class Agent {
         }
         agent.print_view( view ); // COMMENT THIS OUT BEFORE SUBMISSION
         action = agent.get_action( view );
+        
         out.write( action );
+        System.out.print(action);
       }
     }
     catch( IOException e ) {
