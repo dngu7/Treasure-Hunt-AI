@@ -56,6 +56,7 @@ an axe or key can be used multiple times, but each stone can be placed in the wa
 C or U instructions will fail (have no effect) if the appropriate tool is not held, or if the location immediately in front of the agent does not contain an appropriate obstacle.
 
 # Running in Network Mode #
+
 Follow these instructions to see how the game runs in network mode:
 
 open two windows, and cd to the src directory in both of them.
