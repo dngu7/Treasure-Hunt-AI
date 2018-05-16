@@ -17,6 +17,8 @@ class Agent:
         self.blocks = ['T','*','-']
         self.direction = 0
         self.position = [80,80]
+        self.onRaft = 0
+        self.requiredItems = {'-' : 'k', 'T' : 'a'}
     
 
 
@@ -83,6 +85,10 @@ class Agent:
                         self.items['o'] -= 1
                     else:
                         self.items['r'] -= 1
+                        self.onRaft = 1
+                elif element == ' ':
+                    self.onRaft = 0
+
 
         elif (action == 'C' or action == 'c'):
             tree = self.global_map[next_position[0]][next_position[1]]
