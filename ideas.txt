@@ -1,0 +1,6 @@
+### IDEA TEMPLATE #####
+
+# 1. Random Map Generator
+# 2. Evaluate every visible point on the map. 
+# 3. Assign points to every point on the map and rank. This will form the decision of the AI
+# 4. Use a queue to push moves so that the moves can be reevaluated every time the agent moves "f" forward
