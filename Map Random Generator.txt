@@ -1,0 +1,34 @@
+Set random start.
+Set random numbers of goal at random place but it should be far enough from the starting point.
+Use DFS to create path/ paths 
+  Choose direction based on current unvisited path. (So, if we divide sections and then if we have more unvisited at the top, we give more higher chance to go up and etc)
+  If we couldn’t find the goal / more than certain number of counter, we cancel that path and create again. -> the max trial set to be 20.
+Choose random item/items. Then put obstacles that suits to current item. 
+  E.g. 
+  If item axe was chosen
+  Choose one point in the path.
+  Put an axe
+  Then put a tree somewhere later in path. 
+  Put lists of waters along the river.
+Create path/paths to go back to start point
+  Now we also put random items as similar as the method above.
+Put everywhere else with water, wall or land.
+  Method1: (random one)
+    Queue unvisited and assign water, land or wall randomly
+      With probability water > wall > land.
+  Method2: (smoother one)
+    To do this we need to store all the all unvisited ones to queue for each row.
+    find several connected sequence in first row
+    For each sequence we  assign either water, wall or land but the all member in the connected sequence should contain same element.
+      With probability water > wall > land.
+    From the each row find several connected sequence
+    For each sequence compare the row above and see whether there is connected to above. 
+    If at least one place in the current row sequence is connected to the one of sequence in the row above, then we copy the element above and paste on to the current sequence.
+    If there was non of connected points, we assign the random element.
+    We do this for each rows
+Now we save the map as text file to store the random map.
+
+
+WE NEED:
+The random map as above.
+The complete controlled map for testing some cases.
