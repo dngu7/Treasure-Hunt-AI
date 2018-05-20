@@ -57,7 +57,7 @@ class AstarMap(Graph):
         
     # get raft state
     def getRaftState(self):
-        return self.agentState[0]
+        return self.agentState
         
     # calculate manhattan and return
     def getHCost(self, start, goal):
@@ -307,11 +307,11 @@ def astarItems(graph, start, goal, itemsAvailable):
     if position == goal_tuple:
         totalItemUsed = goalNode.getItemsUsedSofar()
         totalNewItemCollected = goalNode.getItemsCollectedSofar()
-        print("totalItemUsed:")
-        print(totalItemUsed)
+        #print("totalItemUsed:")
+        #print(totalItemUsed)
         
-        print("totalNewItemCollected:")
-        print(totalNewItemCollected)
+        #print("totalNewItemCollected:")
+        #print(totalNewItemCollected)
         
         # Ensure a path has been found
         position_list = list(position)
@@ -322,7 +322,7 @@ def astarItems(graph, start, goal, itemsAvailable):
             position_list = list(position)
             path.insert(0, position_list)
 
-    return path, totalItemUsed, totalNewItemCollected
+    return [path, totalItemUsed, totalNewItemCollected]
     
     
     
