@@ -4,3 +4,47 @@
 # 2. Evaluate every visible point on the map. 
 # 3. Assign points to every point on the map and rank. This will form the decision of the AI
 # 4. Use a queue to push moves so that the moves can be reevaluated every time the agent moves "f" forward
+
+### The Brain ###
+
+1. The agent assesses each possible position on the global map. Each position is given a value.
+2. Assessment is refreshed for all points within the view window
+3. Treasure: The agent always completes a forward check to determine if he can or can't return to the original position before returning
+
+4. Position Assessment:	
+
+4A. Item in position 
+
+	Points System (not on raft)				Value
+	A. Walls (*)						0
+	B. Land with FOG surrounding (?) 			1 per ? in 5x5 box
+	C. Collectable Item w/ no items ('k', 'a', 'o')		10
+	D. Collectable Items w/o losing items ('-', 'T')	0/10 (if agent has the prerequisite items)
+	E. Water next to Land (~) with surround (?)				0/1 (1 if agent has prerequisite items (raft or stone)) ##implement this
+	G. Treasure ($)						0/10000 (If agent can return to original starting point
+
+	Points System (on raft)					Value
+	A. Water (on raft) with FOG surrounding (?)		10 per ? In 5x5 box
+	D. Tree ('T')						0/10 (if agent has the axe)
+	E. Door	('-')						0/9 (if agent has key)
+	
+	
+
+4B. Distance from agent						Short distances are higher value
+								Each unit of distance = -1 point
+								
+
+4C. Reachable without items					+50
+    Reachable with items					+0
+    Unreachable							*0 (Prune the tree)
+
+### Decision Tree ###
+
+Pruning
+- if not reachable, then it is not considered
+
+
+	
+
+
+
