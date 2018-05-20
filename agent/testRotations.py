@@ -22,6 +22,8 @@ def rotate(matrix, degree):
     
     return matrix
     
+# https://stackoverflow.com/questions/8372399/zip-with-list-output-instead-of-tuple
+    
 def printMatrix(matrix):
     for i in range(len(matrix)):
             for j in range(len(matrix[i])):
@@ -31,4 +33,4 @@ def printMatrix(matrix):
 matrix = [[1,2,3], [4,5,6], [7,8,9]]
 
 
-printMatrix( rotate(matrix, 180))
+printMatrix( rotate(matrix, 270))
