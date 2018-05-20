@@ -322,7 +322,7 @@ def astarItems(graph, start, goal, itemsAvailable):
             position_list = list(position)
             path.insert(0, position_list)
 
-    return [path,  totalItemUsed, totalNewItemCollected]
+    return path, totalItemUsed, totalNewItemCollected
     
     
     

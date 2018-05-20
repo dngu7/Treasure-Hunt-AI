@@ -7,6 +7,7 @@ import time
 from queue import Queue
 from rotation import rotate
 from socketmanager import TCPSocketManager
+from astar import astarItems, AstarMap
 
 class Agent:
     def __init__(self, ip_address, port_no, view_size):
@@ -15,7 +16,7 @@ class Agent:
         self.view_window = [[' '] * view_size for i in range(view_size)]
         self.global_map_size = 160
         self.global_map = [['?'] * self.global_map_size for i in range(self.global_map_size)]
-        self.global_map_points = [[0] * self.global_map_size for i in range(self.global_map_size)]
+        self.global_map_values = [[0] * self.global_map_size for i in range(self.global_map_size)]
         self.dead_points = []
         self.items = {'k' : 0, 'o' : 0, 'a' : 0, 'r' : 0, '$' : 0}
         self.requiredItems = {'-' : 'k', 'T' : 'a'}
@@ -28,9 +29,6 @@ class Agent:
         self.placedStonesList = []
         self.maproute_testing = [[80,80],[79,80],[78,80],[78,81],[78,82],[78,81],[78,80],[79,80],[80,80]] ##testing delete later
 
-    def aStarSearch(self,start,end, startItems):
-        return self.maproute_testing, 0
-
 
     def decideNextPosition(self):
         N = self.global_map_size
@@ -41,14 +39,14 @@ class Agent:
             for j in range(N):
                 if self.global_map[i][j] == '?':
                     next
-                elif self.global_map_points[i][j] > points:
-                    points = self.global_map_points[i][j]
+                elif self.global_map_values[i][j] > points:
+                    points = self.global_map_values[i][j]
                     nextPosition = [i,j]
         return nextPosition
         
 
 
-    def update_global_map_points(self, size):
+    def update_global_map_values(self, size):
         M = self.global_map_size
         N = size
         # current position of agent on the global map.
@@ -68,7 +66,7 @@ class Agent:
                 Jidx = curr_j + j - posAdj;
 
                 if [Iidx,Jidx] in self.dead_points:  ##These points were previously assessed as explored and have no value
-                    self.global_map_points[Iidx][Jidx] = 0
+                    self.global_map_values[Iidx][Jidx] = 0
                     return
             # Conditons for writing to gloabl map
             # 1) The copying indices should not
@@ -79,7 +77,7 @@ class Agent:
                     Jidx >= 0 and Jidx < M and
                         not (i == 2 and j == 2) ):
                             if [Iidx, Jidx] in self.placedStonesList:
-                                self.global_map_points[Iidx][Jidx] = 0
+                                self.global_map_values[Iidx][Jidx] = 0
                             else:
                                 ## Perform A star search to determine if reachable
                                 reachPoints = 50
@@ -88,11 +86,11 @@ class Agent:
                                 ## 
                                 coordPoints = coordinatePoints(self.global_map[Iidx][Jidx])
                                 if reachPoints:
-                                    self.global_map_points[Iidx][Jidx] = reachPoints + distancePoints + coordPoints
+                                    self.global_map_values[Iidx][Jidx] = reachPoints + distancePoints + coordPoints
                                 else:
-                                    self.global_map_points[Iidx][Jidx] = 0
+                                    self.global_map_values[Iidx][Jidx] = 0
                     elif (i == 2 and j == 2):
-                        self.global_map_points[Iidx][Jidx] = 0
+                        self.global_map_values[Iidx][Jidx] = 0
         
     ## Controller converts a list of positions into keyboard actions for the agent ##
     ## These actions are queued in actionQueue and pushed into the game one at a time ##
@@ -175,6 +173,8 @@ class Agent:
 
         elif obstacle == '~': # values exploring the water depending on whether agent is currently on a raft
             points = 0
+            if self.items['o'] < 0 or self.items['r'] < 0:
+                return 0
             for x_1 in range(-2,3):
                 for y_2 in range(-2,3):
                     if (x + x_1 in range(self.global_map_size)) and (y + y_2 in range(self.global_map_size)):
@@ -322,7 +322,7 @@ class Agent:
                 self.move_agent(action_list[i])
                 self.view_window = self.TCP_Socket.recv_map()
                 self.update_global_map()
-                self.update_global_map_points(5) #refresh points system for the global map
+                self.update_global_map_values(160) #refresh points system for the global map
                 self.print_matrix(self.view_window, self.view_size)
                 #self.print_matrix(self.global_map, 160)
                 print("Current Position: {}".format(self.position))
@@ -331,7 +331,8 @@ class Agent:
                 if self.actionQueue.empty():
                     nextPosition = decideNextPosition()
                     print("\nNext Position Chosen: {} ({})".format(nextPosition, self.global_map[nextPosition[0][nextPosition[1]]]))
-                    #send A* path to controller
+                    
+                    newPath, totalItemUsed, totalNewItemCollected = astarItems(AstarMap,self.position, nextPosition, self.items)
                     newPath, usedItems = self.aStarSearch(self.position,nextPosition, self.items)
                     self.controller(newPath)
             #Use this for manual human gameplay    

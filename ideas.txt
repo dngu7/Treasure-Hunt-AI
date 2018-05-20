@@ -20,8 +20,7 @@
 	B. Land with FOG surrounding (?) 			1 per ? in 5x5 box
 	C. Collectable Item w/ no items ('k', 'a', 'o')		10
 	D. Collectable Items w/o losing items ('-', 'T')	0/10 (if agent has the prerequisite items)
-	E. Water next to Land (~)				0/1 (1 if agent has prerequisite items (raft or stone))
-	F. Water surrounded by Water				0
+	E. Water next to Land (~) with surround (?)				0/1 (1 if agent has prerequisite items (raft or stone)) ##implement this
 	G. Treasure ($)						0/10000 (If agent can return to original starting point
 
 	Points System (on raft)					Value
