@@ -12,6 +12,7 @@ from astar import astarItems, AstarMap
 class Agent:
     def __init__(self, ip_address, port_no, view_size):
         self.TCP_Socket = TCPSocketManager(ip_address, port_no, view_size)
+        
         self.view_size = view_size
         self.view_window = [[' '] * view_size for i in range(view_size)]
         self.global_map_size = 160
@@ -28,6 +29,8 @@ class Agent:
         self.rotationAngleTbl = {(-1,0): 0, (0,-1): 90, (1,0): 180, (0,1): 270}
         self.placedStonesList = []
         self.maproute_testing = [[80,80],[79,80],[78,80],[78,81],[78,82],[78,81],[78,80],[79,80],[80,80]] ##testing delete later
+        
+        self.AstarMap = AstarMap(global_map)
 
 
     def decideNextPosition(self):
@@ -232,6 +235,8 @@ class Agent:
             # else if the current viewmap reading is at the centre,
             # that is stored as agent directions.  
 
+
+            self.AstarMap.updateGrid(self.global_map, self.onRaft)
   
     def move_agent(self, action):
         next_position = self.give_front_position(self.position)
@@ -332,7 +337,7 @@ class Agent:
                     nextPosition = decideNextPosition()
                     print("\nNext Position Chosen: {} ({})".format(nextPosition, self.global_map[nextPosition[0][nextPosition[1]]]))
                     
-                    newPath, totalItemUsed, totalNewItemCollected = astarItems(AstarMap,self.position, nextPosition, self.items)
+                    newPath, totalItemUsed, totalNewItemCollected = astarItems(self.AstarMap,self.position, nextPosition, self.items)
                     newPath, usedItems = self.aStarSearch(self.position,nextPosition, self.items)
                     self.controller(newPath)
             #Use this for manual human gameplay    
