@@ -120,7 +120,7 @@ class AstarMap(Graph):
         #    in itemAvailable, we will return stone
         # 3) if we have gained raft item we return raft.
         # Note: stone has higher priority to use then using raft.
-        elif element == '~' and not isempty(itemAvailable):
+        elif element == '~' and not itemAvailable:
             if raftState:
                 return []
             elif 'o' in itemAvailable:

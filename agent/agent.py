@@ -19,7 +19,7 @@ class Agent:
         self.global_map = [['?'] * self.global_map_size for i in range(self.global_map_size)]
         self.global_map_values = [[0] * self.global_map_size for i in range(self.global_map_size)]
         self.astar_memory = [[[],[],[]] * self.global_map_size for i in range(self.global_map_size)]
-        self.dead_points = []
+        
         self.items = {'k' : 0, 'o' : 0, 'a' : 0, 'r' : 0, '$' : 0}
         self.requiredItems = {'-' : 'k', 'T' : 'a'}
         self.blocks = ['T','*','-']
@@ -29,86 +29,50 @@ class Agent:
         self.actionQueue = Queue()
         self.rotationAngleTbl = {(-1,0): 0, (0,-1): 90, (1,0): 180, (0,1): 270}
         self.placedStonesList = []
-        self.maproute_testing = [[80,80],[79,80],[78,80],[78,81],[78,82],[78,81],[78,80],[79,80],[80,80]] ##testing delete later
-        
         self.AstarMap = AstarMap(self.global_map)
-
+        self.visibleCoordinates = [[78,78],[78,79],[78,80],[78,81],[78,82],[79,78],[79,79],[79,80],[79,81],[79,82],[80,78],[80,79],[80,81],[80,82],[81,78],[81,79],[81,80],[81,81],[81,82],[82,78],[82,79],[82,80],[82,81],[82,82]]
+        self.exploredCoordinates = [[80,80]]
 
     def decideNextPosition(self):
-        N = self.global_map_size
         nextPosition = [80,80]
         points = -100000
 
-        for i in range(N):
-            for j in range(N):
-                if self.global_map[i][j] == '?':
-                    next
-                elif self.global_map_values[i][j] > points:
-                    points = self.global_map_values[i][j]
-                    nextPosition = [i,j]
+        for coordinate in self.visibleCoordinates:
+            i = coordinate[0]
+            j = coordinate[1]
+            if self.global_map_values[i][j] > points:
+                points = self.global_map_values[i][j]
+                nextPosition = [i,j]
         return nextPosition
         
 
 
-    def update_global_map_values(self, size):
-        M = self.global_map_size
-        N = size
-        # current position of agent on the global map.
-        if N < self.global_map_size:
-            curr_i = self.position[0] 
-            curr_j = self.position[1]
-            posAdj = -2
-        elif N == self.global_map_size:
-            curr_i = 0
-            curr_j = 0
-            posAdj = 0
+    def update_global_map_values(self):
 
-        for i in range(N):
-            for j in range(N):
-                # indices to copy into global map.
-                Iidx = curr_i + i - posAdj;
-                Jidx = curr_j + j - posAdj;
-                if [Iidx,Jidx] in self.dead_points or self.global_map[Iidx][Jidx] == '?':  ##These points were previously assessed as explored and have no value
-                    self.global_map_values[Iidx][Jidx] = 0
-                    next
-            # Conditons for writing to gloabl map
-            # 1) The copying indices should not
-            # exceed the global map
-            # 2) Not copying the current directions of AI.
+        for coordinate in self.visibleCoordinates:
+            x = coordinate[0]
+            y = coordinate[1]
+            self.astar_memory[x][y] = astarItems(self.AstarMap,self.position, [x,y], self.items)
+            if len(self.astar_memory[x][y][0]) > 0:
+                if len(self.astar_memory[x][y][1]) == 0:
+                    reachPoints = 50
                 else:
-                    if  (Iidx >= 0 and Iidx < M and Jidx >= 0 and Jidx < M):
-                            if [Iidx, Jidx] in self.placedStonesList:
-                                self.global_map_values[Iidx][Jidx] = 0
-                            else:
-                                ## Perform A star search to determine if reachable
-                                
-                                self.astar_memory[Iidx][Jidx] = astarItems(self.AstarMap,self.position, [Iidx,Jidx], self.items)
-                                if len(self.astar_memory[Iidx][Jidx][0]) > 0:
-                                    if len(self.astar_memory[Iidx][Jidx][0]) == 0:
-                                        reachPoints = 50
-                                    else:
-                                        reachPoints = 1
-                                    ## reduce points based on the distance
-                                    distancePoints = len(self.astar_memory[Iidx][Jidx][0])
-                                    coordPoints = self.coordinatePoints([Iidx,Jidx])
-                                    if reachPoints:
-                                        self.global_map_values[Iidx][Jidx] = reachPoints + distancePoints + coordPoints
-                                        print('\ncoordinates {},{} = {}'.format(Iidx,Jidx,self.global_map[Iidx][Jidx]))
-                                        print('points stored = {}'.format(self.global_map_values[Iidx][Jidx]))
-                                        print('reachPoints = {}'.format(reachPoints))
-                                        print('distancePoints = {}'.format(distancePoints))
-                                        print('coordPoints = {}\n'.format(coordPoints))
-                                else:
-                                    self.global_map_values[Iidx][Jidx] = 0
-                    elif (i == 2 and j == 2):
-                        self.global_map_values[Iidx][Jidx] = 0
+                    reachPoints = 1
+                ## reduce points based on the distance
+                distancePoints = len(self.astar_memory[x][y][0])
+                coordPoints = self.calculateCoordinatePoints([x,y])
+                if reachPoints:
+                    self.global_map_values[x][y] = reachPoints - distancePoints + coordPoints
+                    print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints))
+            else:
+                self.global_map_values[x][y] = 0
+
         
     ## Controller converts a list of positions into keyboard actions for the agent ##
     ## These actions are queued in actionQueue and pushed into the game one at a time ##
     def controller(self, positionList): ## Missing implementation for unlock and cut
         currentPos = self.position
         currentDir = self.direction
-        actionList = ''
 
         if len(positionList) == 0:
             return
@@ -126,33 +90,32 @@ class Agent:
                 return
             rotationRequired = (newDirection - currentDir) % 360
             if rotationRequired == 90:
-                actionList = actionList + 'L'
+                self.actionQueue.put('L')
             elif rotationRequired == 180:
-                actionList = actionList + 'LL'
+                self.actionQueue.put('LL')
             elif rotationRequired == 270:
-                actionList = actionList + 'R'
+                self.actionQueue.put('R')
 
             if self.global_map[newPosition[0]][newPosition[1]] in self.requiredItems: #if tree or door then cut or unlock
                 if self.global_map[newPosition[0]][newPosition[1]] == 'T':      
-                    actionList = actionList + 'C'
+                    self.actionQueue.put('C')
                 elif self.global_map[newPosition[0]][newPosition[1]] == '-':
-                    actionList = actionList + 'U'
+                    self.actionQueue.put('U')
 
-            actionList = actionList + 'F'
-            #print("{} {} {} {}".format(newPosition, movement, rotationRequired, actionList))
+            self.actionQueue.put('F')
             currentPos = newPosition
             currentDir = newDirection
-            self.actionQueue.put(actionList)
-            actionList = ''
     
-    def coordinatePoints(self, coordinate): # assigns points to each coordinate on the global map
+    def calculateCoordinatePoints(self, coordinate): # assigns points to each coordinate on the global map
         returnhomefunction = 0 ###replace later
         x = coordinate[0]
         y = coordinate[1]
         obstacle = self.global_map[x][y]
 
 
-        if (obstacle == '*') or (obstacle == '?') or coordinate in self.dead_points:    #return 0 pts if wall
+        if (obstacle == '*'):
+            self.exploredCoordinates.append(obstacle)   #return 0 pts if wall
+            self.visibleCoordinates.remove(obstacle)
             return 0
         
         elif obstacle in ['k','a','o']:  #return 10 pts if new items collectable without losing items
@@ -178,7 +141,7 @@ class Agent:
                         if surrounding_obstacle == '?':
                             points += 0.5
             if points == 0:
-                self.dead_points.append([x,y])
+                self.exploredCoordinates.append([x,y])
             return points
             #possible to shorten this... keep like this until confirmed
 
@@ -196,7 +159,7 @@ class Agent:
                             else:
                                 points += 1
             if points == 0:
-                self.dead_points.append([x,y])
+                self.exploredCoordinates.append([x,y])
             return points
         elif obstacle == '$':
             if returnhomefunction:
@@ -240,6 +203,9 @@ class Agent:
                             self.global_map[Iidx][Jidx] = element
                 elif (i == 2 and j == 2):
                     self.global_map[Iidx][Jidx] = '^'
+                
+                if [Iidx, Jidx] not in self.exploredCoordinates and [Iidx, Jidx] not in self.visibleCoordinates:
+                    self.visibleCoordinates.append([Iidx, Jidx])
                      
             # else if the current viewmap reading is at the centre,
             # that is stored as agent directions.  
@@ -259,6 +225,10 @@ class Agent:
             
             if self.global_map[next_position[0]][next_position[1]] not in self.blocks:
                 self.position = next_position
+                if next_position not in self.exploredCoordinates:
+                    self.exploredCoordinates.append(next_position)
+                if next_position in self.visibleCoordinates:
+                    self.visibleCoordinates.remove(next_position)
 
                 nextElement = self.global_map[next_position[0]][next_position[1]]
                 prevElement = self.global_map[self.position[0]][self.position[1]]
@@ -366,33 +336,33 @@ class Agent:
                 if len(self.view_window) > 0:
                     self.update_global_map()
                     self.print_small_matrix(self.view_window, self.view_size)
-                    if action_list[i] == 'F' or action_list[i] == 'z':
-                        self.update_global_map_values(160) #refresh points system for the global map
+                        
                 
-                self.print_large_matrix(self.global_map, 160)
-                print("Current Position: {}".format(self.position))
-                print("ActionQueue empty?: {}".format(self.actionQueue.empty()))
-                #print("Item List: {}".format(self.items))
-                #print("key: {}".format(self.astar_memory[78][80]))
+                    self.print_large_matrix(self.global_map, 160)
+                    print("Current Position: {}".format(self.position))
+                    print("Visible: {}".format(self.visibleCoordinates))
+                    print("Explored: {}".format(self.exploredCoordinates))
+                    print("Item List: {}".format(self.items))
 
 
-                if self.actionQueue.empty():
-                    nextPosition = self.decideNextPosition()
-                    print("\nNext Position Chosen: {} ({})".format(nextPosition, self.global_map[nextPosition[0]][nextPosition[1]]))
-                    #collect path from memory
-                    pathMemory = self.astar_memory[nextPosition[0]][nextPosition[1]]
-                    newPath = pathMemory[0]
-                    totalItemUsed = pathMemory[1]
-                    totalNewItemCollected = pathMemory[2]
-                    print("aStarMemory: {}".format(self.astar_memory[nextPosition[0]][nextPosition[1]]))
-                    self.changeItems(totalItemUsed, totalNewItemCollected)
-                    self.controller(newPath)
+            if self.actionQueue.empty():
+                self.update_global_map_values()
+                nextPosition = self.decideNextPosition()
+                print("\nNext Position Chosen: {} ({})".format(nextPosition, self.global_map[nextPosition[0]][nextPosition[1]]))
+                #collect path from memory
+                pathMemory = self.astar_memory[nextPosition[0]][nextPosition[1]]
+                newPath = pathMemory[0]
+                totalItemUsed = pathMemory[1]
+                totalNewItemCollected = pathMemory[2]
+                print("aStarMemory: {}".format(self.astar_memory[nextPosition[0]][nextPosition[1]]))
+                self.changeItems(totalItemUsed, totalNewItemCollected)
+                self.controller(newPath)
             #Use this for manual human gameplay    
-            does_nothing = self.type_to_move()
             #self.TCP_Socket.send_action(action_list)
             #self.maproute_testing = []
 
             #Use this for AI Keyboard Control
+            does_nothing = self.type_to_move()
             if not self.actionQueue.empty():
                 action_list = self.actionQueue.get()
                 print(action_list)
