@@ -96,10 +96,10 @@ class AstarMap(Graph):
             # if crossing to one of neibbour is legal,
             # add on to the legalNeighbours lists
             if self.checkLegalState(direction, itemAvailable, currRaftState ):
-                
+                element = self.grid[direction[0]][direction[1]]
                 itemRequired = self.getItemRequired(direction, itemAvailable, currRaftState)
                 cost2Cross = 1 # assuming cost to go to next index is always one.
-                legalNeighbours.append( [direction, cost2Cross, itemRequired] )
+                legalNeighbours.append( [direction, cost2Cross, itemRequired, element] )
                   
         return legalNeighbours
 
@@ -112,7 +112,7 @@ class AstarMap(Graph):
         # if current map has the element which is on requiredItems 
         # lists, we just simply return that
         if element in self.requiredItems:
-            return self.requiredItems[element]
+            return self.requiredItems[element] 
             
         # else if we have special case with water as element,
         # we have following option:
@@ -134,7 +134,7 @@ class AstarMap(Graph):
             elif 'r' in itemAvailable and itemAvailable['r'] >= 1:
                 return 'r'
         else:
-            return {}
+            return []
      
     # return the item when it needs to collect
     # by consequence of getting there
@@ -161,7 +161,7 @@ class AstarMap(Graph):
         raftState = currRaftState
         element = self.grid[d[0]][d[1]]
         
-        obstacles = ['~', 'T', '-', '*', '?']
+        obstacles = ['~', 'T', '-', '*', '?','.']
 
 
         # if we are already on the raft or 
@@ -289,7 +289,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
         #print("currently available item origin:")
         #print(curr_available) 
         
-        for childPosition, actionCost, itemRequired in graph.getChildren(position, curr_available, raftState):
+        for childPosition, actionCost, itemRequired, element in graph.getChildren(position, curr_available, raftState):
         
             #print("neibour position:", childPosition)
         
@@ -306,16 +306,16 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
                 
                 if itemRequired == 'r':
                     
-                    #print('raft required at')
+                    #print('raft set at')
                     #print(childPosition)
                     
                     childRaftSate = 1
                 
-                elif childRaftSate == 1:
-                    
+                elif childRaftSate == 1 and element != '~':
+                    #print("item remaining")
+                    #print(copy_available_item)
                     #print('raft reset at')
                     #print(childPosition)
-                    
                     childRaftSate = 0
                 
                     
@@ -378,10 +378,11 @@ def incrementDict( user_dict, item):
     return user_dict
     
 def deductItem( itemDict, item):
-
+    
     permenantItemList = {'a', 'k'}
-
-    if item not in permenantItemList:
+    #print("items")
+    #print(item)
+    if item and item not in permenantItemList:
         itemDict[item] -= 1
         
     return itemDict
