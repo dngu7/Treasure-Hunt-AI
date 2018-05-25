@@ -25,6 +25,7 @@ class Agent:
         self.blocks = ['T','*','-','.']
         self.direction = 0
         self.position = [80,80]
+        self.home = [80,80]
         self.onRaft = 0
         self.onLand = 1
         self.actionQueue = Queue()
@@ -38,6 +39,10 @@ class Agent:
         nextPosition = [80,80]
         points = -100000
 
+        if self.items['$'] > 0:
+            if self.check_routehome(self.position):
+                return nextPosition
+
         for coordinate in self.visibleCoordinates:
             i = coordinate[0]
             j = coordinate[1]
@@ -47,7 +52,15 @@ class Agent:
                 #print('[{},{}] has higher points'.format(i,j))
         return nextPosition
         
-
+    def check_routehome(self, startingpoint):
+        astarresult = astarItems(self.AstarMap,startingpoint, self.home, self.items, 0)
+        print('PathHome: {}'.format(astarresult))
+        if len(astarresult[0]) > 0:
+            if startingpoint == self.position:
+                self.astar_memory[80][80] = astarresult
+            return 1
+        else:
+            return 0
 
     def update_global_map_values(self):
         removecoordinates = []
@@ -80,10 +93,10 @@ class Agent:
                 #print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0])))
 
             else:
-                self.global_map_values[x][y] = 0
+                self.global_map_values[x][y] = -10000
             
             
-            if (obstacle == ' ') and coordPoints < 3:
+            if (obstacle == ' ') and coordPoints < 2.5:
                 removecoordinates.append([x,y])
                 continue
 
@@ -92,7 +105,7 @@ class Agent:
         for coordinate in removecoordinates:
             self.visibleCoordinates.remove(coordinate)
             self.exploredCoordinates.append(coordinate)
-            self.global_map_values[x][y] = 0
+            self.global_map_values[x][y] = -10000
         print('Final Visible Coordinates: {}'.format(self.visibleCoordinates))
                 
     ## Controller converts a list of positions into keyboard actions for the agent ##
@@ -139,18 +152,21 @@ class Agent:
         y = coordinate[1]
         obstacle = self.global_map[x][y]
 
-
-
-        
         if obstacle in ['k','a','o']:  #return 10 pts if new items collectable without losing items
-            return 30
+            if self.onRaft:
+                return 15
+            else:
+                return 30
 
         elif obstacle in ['T','-']: # returns 10 pts if agent contains pre-req to collect new items
             if obstacle == 'T' and self.items['a'] > 0:
-                return 30
+                if self.onRaft:
+                    return 40
+                else:
+                    return 30
             elif obstacle == '-' and self.items['k'] > 0:
                 if self.onRaft:         # the agent prioritizes obtaining another raft over opening doors
-                    return 28
+                    return 15
                 else:
                     return 30
             else:
@@ -158,6 +174,10 @@ class Agent:
 
         elif obstacle == ' ': # values exploring land depending on whether agent is currently on a raft
             points = 0
+            if self.onRaft:
+                points = -5
+            else:
+                points = 0
             for x_1 in range(-2,3):
                 for y_2 in range(-2,3):
                     if (x + x_1 in range(self.global_map_size)) and (y + y_2 in range(self.global_map_size)):
@@ -172,7 +192,7 @@ class Agent:
 
         elif obstacle == '~': # values exploring the water depending on whether agent is currently on a raft
             points = 0
-            if self.items['o'] < 1 or self.items['r'] < 1:
+            if (self.items['o'] < 1 and self.items['r'] < 1) and self.onRaft == 0:
                 return 0
             for x_1 in range(-2,3):
                 for y_2 in range(-2,3):
@@ -185,9 +205,9 @@ class Agent:
                                 points += 0.1
             return points
         elif obstacle == '$':
-            if returnhomefunction:
+            if self.check_routehome([x,y]):
                 return 10000
-            return 0
+            return 2
         return 0
 
 
