@@ -310,14 +310,14 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
                     #print(childPosition)
                     
                     childRaftSate = 1
-                '''
+                
                 elif childRaftSate == 1:
                     
-                    print('raft reset at')
-                    print(childPosition)
+                    #print('raft reset at')
+                    #print(childPosition)
                     
                     childRaftSate = 0
-                '''
+                
                     
                 
                 # creating new child node and push to the openlist
@@ -388,3 +388,4 @@ def deductItem( itemDict, item):
     
     
     
+
