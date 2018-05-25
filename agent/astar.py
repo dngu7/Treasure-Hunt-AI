@@ -347,7 +347,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
             position_list = list(position)
             path.insert(0, position_list)
 
-    return [path, itemUsedState] #finalItemList, raftState]
+    return [path, itemUsedState, finalItemList] #finalItemList, raftState]
     
 def confirmItemUsed(finalItems, itemsAvailable):
     itemsList = ['r','o', 'k', 'a']
