@@ -19,7 +19,7 @@ class Agent:
         self.global_map = [['?'] * self.global_map_size for i in range(self.global_map_size)]
         self.global_map_values = [[0] * self.global_map_size for i in range(self.global_map_size)]
         self.astar_memory = [[[],[],[]] * self.global_map_size for i in range(self.global_map_size)]
-        
+        self.emptyitems = {'k' : 0, 'o' : 0, 'a' : 0, 'r' : 0, '$' : 0}
         self.items = {'k' : 0, 'o' : 0, 'a' : 0, 'r' : 0, '$' : 0}
         self.requiredItems = {'-' : 'k', 'T' : 'a'}
         self.blocks = ['T','*','-','.']
@@ -40,7 +40,7 @@ class Agent:
         points = -100000
 
         if self.items['$'] > 0:
-            if self.check_routehome(self.position):
+            if self.decide_routehome(self.position):
                 return nextPosition
 
         for coordinate in self.visibleCoordinates:
@@ -49,10 +49,22 @@ class Agent:
             if self.global_map_values[i][j] > points:
                 points = self.global_map_values[i][j]
                 nextPosition = [i,j]
-                #print('[{},{}] has higher points'.format(i,j))
+                print('[{},{}] has higher points ({})'.format(i,j, self.global_map_values[i][j]))
+            else:
+                print('[{},{}] failed and has less points ({})'.format(i,j, self.global_map_values[i][j]))
         return nextPosition
         
-    def check_routehome(self, startingpoint):
+    def check_routehome(self, startingpoint, treasurepoint):
+        firsttripresult = astarItems(self.AstarMap,startingpoint, treasurepoint, self.items, self.onRaft)
+        if len(firsttripresult[0]) > 0:
+            hometripresult = astarItems(self.AstarMap, treasurepoint, self.home, firsttripresult[2], 0)
+        else:
+            return 0
+
+        if len(hometripresult[0]) > 0:
+            return 1
+    
+    def decide_routehome(self,startingpoint):
         astarresult = astarItems(self.AstarMap,startingpoint, self.home, self.items, 0)
         print('PathHome: {}'.format(astarresult))
         if len(astarresult[0]) > 0:
@@ -61,7 +73,7 @@ class Agent:
             return 1
         else:
             return 0
-
+        
     def update_global_map_values(self):
         removecoordinates = []
         for coordinate in self.visibleCoordinates:
@@ -74,39 +86,50 @@ class Agent:
 
             if (obstacle == '*') or (obstacle == '^') or (obstacle == '.'):
                 removecoordinates.append([x,y])
+                print('Removed: {} Reason: Wall or already went through'.format(coordinate))
                 continue
             if obstacle == '~' and self.items['r'] < 1 and self.items['o'] < 1 and self.onLand:
-                self.global_map_values[x][y] = 0
-                print('Skipped water: [{} {}]'.format(x,y))
+                self.global_map_values[x][y] = -10000
+                #print('Skipped water: [{} {}]'.format(x,y))
                 continue
+            
+            withoutItemRoute = astarItems(self.AstarMap,self.position, [x,y], self.emptyitems, self.onRaft)
+            
+            if len(withoutItemRoute[0]):
+                self.astar_memory[x][y] = withoutItemRoute
+            else:
+                self.astar_memory[x][y] = astarItems(self.AstarMap,self.position, [x,y], self.items, self.onRaft)
 
-            self.astar_memory[x][y] = astarItems(self.AstarMap,self.position, [x,y], self.items, self.onRaft)
             if len(self.astar_memory[x][y][0]) > 0:
                 if self.astar_memory[x][y][1]:
                     reachPoints = 10
                 else:
                     reachPoints = 50
                     ## reduce points based on the distance
-                distancePoints = (len(self.astar_memory[x][y][0])) * -0.5
+                distancePoints = (len(self.astar_memory[x][y][0])) * -0.2
                 coordPoints = self.calculateCoordinatePoints([x,y])
                 self.global_map_values[x][y] = reachPoints + distancePoints + coordPoints
+                print('{},{} is worth {} points'.format(x,y, self.global_map_values[x][y]))
                 #print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0])))
 
             else:
+                print('{},{} is not reachhable'.format(x,y))
                 self.global_map_values[x][y] = -10000
             
-            
-            if (obstacle == ' ') and coordPoints < 2.5:
+
+            if (obstacle == ' ') and coordPoints < 2.5 and reachPoints > 1:
+                print('Removed: {} Reason: not enough coordpoints ({})'.format(coordinate, coordPoints))
                 removecoordinates.append([x,y])
                 continue
 
-            print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {} path = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0]),self.astar_memory[x][y][0]))
+            print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0])))
 
         for coordinate in removecoordinates:
+            
             self.visibleCoordinates.remove(coordinate)
             self.exploredCoordinates.append(coordinate)
             self.global_map_values[x][y] = -10000
-        print('Final Visible Coordinates: {}'.format(self.visibleCoordinates))
+        #print('Final Visible Coordinates: {}'.format(self.visibleCoordinates))
                 
     ## Controller converts a list of positions into keyboard actions for the agent ##
     ## These actions are queued in actionQueue and pushed into the game one at a time ##
@@ -173,7 +196,6 @@ class Agent:
                 return 0
 
         elif obstacle == ' ': # values exploring land depending on whether agent is currently on a raft
-            points = 0
             if self.onRaft:
                 points = -5
             else:
@@ -187,6 +209,7 @@ class Agent:
                                 points += 0.1
                             else:
                                 points += 0.5
+            print('{} {}: points: {}'.format(x,y,points))
             return points
             #possible to shorten this... keep like this until confirmed
 
@@ -205,9 +228,9 @@ class Agent:
                                 points += 0.1
             return points
         elif obstacle == '$':
-            if self.check_routehome([x,y]):
-                return 10000
-            return 2
+            if self.check_routehome(self.position, [x,y]):
+                return 9999999
+            return 0
         return 0
 
 
