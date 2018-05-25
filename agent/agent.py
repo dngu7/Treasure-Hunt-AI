@@ -22,10 +22,11 @@ class Agent:
         
         self.items = {'k' : 0, 'o' : 0, 'a' : 0, 'r' : 0, '$' : 0}
         self.requiredItems = {'-' : 'k', 'T' : 'a'}
-        self.blocks = ['T','*','-']
+        self.blocks = ['T','*','-','.']
         self.direction = 0
         self.position = [80,80]
         self.onRaft = 0
+        self.onLand = 1
         self.actionQueue = Queue()
         self.rotationAngleTbl = {(-1,0): 0, (0,-1): 90, (1,0): 180, (0,1): 270}
         self.placedStonesList = []
@@ -43,6 +44,7 @@ class Agent:
             if self.global_map_values[i][j] > points:
                 points = self.global_map_values[i][j]
                 nextPosition = [i,j]
+                #print('[{},{}] has higher points'.format(i,j))
         return nextPosition
         
 
@@ -57,30 +59,40 @@ class Agent:
             distancePoints = 0
             coordPoints = 0
 
-            if (obstacle == '*') or (obstacle == '^'):
+            if (obstacle == '*') or (obstacle == '^') or (obstacle == '.'):
                 removecoordinates.append([x,y])
+                continue
+            if obstacle == '~' and self.items['r'] < 1 and self.items['o'] < 1 and self.onLand:
                 self.global_map_values[x][y] = 0
-                next
+                print('Skipped water: [{} {}]'.format(x,y))
+                continue
 
-            self.astar_memory[x][y] = astarItems(self.AstarMap,self.position, [x,y], self.items)
+            self.astar_memory[x][y] = astarItems(self.AstarMap,self.position, [x,y], self.items, self.onRaft)
             if len(self.astar_memory[x][y][0]) > 0:
                 if self.astar_memory[x][y][1]:
-                    reachPoints = 1
+                    reachPoints = 10
                 else:
                     reachPoints = 50
                     ## reduce points based on the distance
                 distancePoints = (len(self.astar_memory[x][y][0])) * -0.5
                 coordPoints = self.calculateCoordinatePoints([x,y])
                 self.global_map_values[x][y] = reachPoints + distancePoints + coordPoints
+                #print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0])))
+
             else:
                 self.global_map_values[x][y] = 0
-
+            
+            
+            if (obstacle == ' ') and coordPoints < 3:
+                removecoordinates.append([x,y])
+                continue
 
             print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {} path = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0]),self.astar_memory[x][y][0]))
 
         for coordinate in removecoordinates:
             self.visibleCoordinates.remove(coordinate)
             self.exploredCoordinates.append(coordinate)
+            self.global_map_values[x][y] = 0
         print('Final Visible Coordinates: {}'.format(self.visibleCoordinates))
                 
     ## Controller converts a list of positions into keyboard actions for the agent ##
@@ -151,7 +163,10 @@ class Agent:
                     if (x + x_1 in range(self.global_map_size)) and (y + y_2 in range(self.global_map_size)):
                         surrounding_obstacle = self.global_map[x + x_1][y + y_2]
                         if surrounding_obstacle == '?':
-                            points += 0.5
+                            if self.onRaft:
+                                points += 0.1
+                            else:
+                                points += 0.5
             return points
             #possible to shorten this... keep like this until confirmed
 
@@ -165,9 +180,9 @@ class Agent:
                         surrounding_obstacle = self.global_map[x + x_1][y + y_2]
                         if surrounding_obstacle == '?':
                             if self.onRaft:
-                                points += 5
+                                points += 0.5
                             else:
-                                points += 1
+                                points += 0.1
             return points
         elif obstacle == '$':
             if returnhomefunction:
@@ -237,32 +252,36 @@ class Agent:
                 self.visibleCoordinates.remove(self.position)
 
             if self.global_map[next_position[0]][next_position[1]] not in self.blocks:
-                self.position = next_position
-
-
-                nextElement = self.global_map[next_position[0]][next_position[1]]
                 prevElement = self.global_map[self.position[0]][self.position[1]]
+                self.position = next_position
+                nextElement = self.global_map[next_position[0]][next_position[1]]
+                
 
                 if nextElement in self.items:
                     self.items[nextElement] += 1
                 
-                #needs to be reviewed... 
+                #needs to be reviewed...
                 if nextElement == '~':
                     if self.items['o'] > 0:
                         self.items['o'] -= 1
                         self.placedStonesList.append(next_position)
 
-                    elif prevElement == ' ': # Only change this if the previous position was land ' '
+                    elif self.onLand: # Only change this if the previous position was land ' '
                         if self.items['r'] > 0:
-                            self.items['r'] -= 1
+                            self.items['r'] = self.items['r'] - 1
                             self.onRaft = 1
+                            self.onLand = 0
+                            print("on a raft")
                         else:
                             print("Error: no raft in inventory")
+
                     elif self.onRaft == 0:
-                        print("Error: something wrong with item counts")
+                        print("Error: Raft not available")
                         
                 elif nextElement == ' ':
                     self.onRaft = 0
+                    self.onLand = 1
+                    print("on land. ")
 
 
         elif (action == 'C' or action == 'c'):
@@ -346,19 +365,23 @@ class Agent:
                 if len(self.view_window) > 0:
                     self.update_global_map()
                     self.print_small_matrix(self.view_window, self.view_size)
-                        
-                
-                    self.print_large_matrix(self.global_map, 160)
-                    print("Current Position: {}".format(self.position))
-                    print("Visible: {}".format(self.visibleCoordinates))
-                    print("Explored: {}".format(self.exploredCoordinates))
                     print("Item List: {}".format(self.items))
+                        
+
 
 
             if self.actionQueue.empty():
+                self.print_large_matrix(self.global_map, 160)
                 self.update_global_map_values()
+                print("Current Position: {}".format(self.position))
+                print("Visible: {}".format(self.visibleCoordinates))
+                print("Explored: {}".format(self.exploredCoordinates))
+                print("Item List: {}".format(self.items))
+
                 nextPosition = self.decideNextPosition()
                 print("\nNext Position Chosen: {} ({})".format(nextPosition, self.global_map[nextPosition[0]][nextPosition[1]]))
+                print("onLand: {} onRaft: {}".format(self.onLand, self.onRaft))
+
                 #collect path from memory
                 pathMemory = self.astar_memory[nextPosition[0]][nextPosition[1]]
                 newPath = pathMemory[0]
