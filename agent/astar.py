@@ -168,7 +168,7 @@ class AstarMap(Graph):
         # have items to cross water
         if (element  == '~' and (raftState == 1 or ('r' in items and items['r'] > 0) 
                                     or ('o' in items and items['o'] > 0 ) ) ):
-            if raftState == 1:
+            #if raftState == 1:
                 #print("raft found")
             return 1
             
