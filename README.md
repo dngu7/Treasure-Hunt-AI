@@ -64,4 +64,4 @@ choose a port number between 1025 and 65535 - let's suppose you choose 31415.
 type this in one window:
 java Step -p 31415 -i s0.in
 type this in the other window:
-python3 Agent -p 31415
+python3 agent.py -p 31415
