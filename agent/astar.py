@@ -37,7 +37,7 @@ class AstarMap(Graph):
     
     requiredItems = {'-' : 'k', 'T' : 'a'}
     
-    def __init__(self, grid, agentState = [0]):
+    def __init__(self, grid, agentState = 0):
         self.grid = grid
         if len(grid) >= len(grid[0]):
             self.size = len(grid)
@@ -57,7 +57,7 @@ class AstarMap(Graph):
         
     # get raft state
     def getRaftState(self):
-        return self.agentState[0]
+        return self.agentState
         
     # calculate manhattan and return
     def getHCost(self, start, goal):
@@ -74,40 +74,41 @@ class AstarMap(Graph):
     # cost - the cost to get on to the current position to the neighbour one
     #      - will be always 1.
     # item - gives what sort of items it needs in order to get to the neighbour one
-    def getChildren(self, point, itemAvailable):
+    def getChildren(self, point, itemAvailable, currRaftState):
         y,x = point
     
         # find all indices that is neibour to current point
-        indexList = []
+        neighbours = []
         for i,j in [ [-1, 0], [1, 0], [0, -1], [0, 1] ]:
             
             currI = y + i
             currJ = x + j
             if currI >= 0 and currI < self.size  and currJ >= 0 and  currJ < self.size:
-                indexList.append( [currI, currJ] )
+                neighbours.append( [currI, currJ] )
 
         #print("all neighbours")
         #print(indexList)
 
         legalNeighbours = []
         # find all legal neighbours
-        for d in indexList:
+        for direction in neighbours:
             
             # if crossing to one of neibbour is legal,
             # add on to the legalNeighbours lists
-            if self.checkLegalState(d, itemAvailable ):
+            if self.checkLegalState(direction, itemAvailable, currRaftState ):
                 
-                itemUsed = self.getItemRequired(d, itemAvailable)
-                itemCollected = self.getItemCollected(d)
-                legalNeighbours.append( [d, 1, itemUsed, itemCollected] )
+                itemRequired = self.getItemRequired(direction, itemAvailable, currRaftState)
+                cost2Cross = 1 # assuming cost to go to next index is always one.
+                legalNeighbours.append( [direction, cost2Cross, itemRequired] )
                   
         return legalNeighbours
 
 
-    def getItemRequired(self, d, itemAvailable):
+    def getItemRequired(self, d, itemAvailable, raftState):
     
         element = self.grid[d[0]][d[1]]
         itemlists = {'k', 'o', 'a', 'r', '$'}
+        #self.requiredItems s=  {'-' : 'k', 'T' : 'a'}
         # if current map has the element which is on requiredItems 
         # lists, we just simply return that
         if element in self.requiredItems:
@@ -120,43 +121,55 @@ class AstarMap(Graph):
         #    in itemAvailable, we will return stone
         # 3) if we have gained raft item we return raft.
         # Note: stone has higher priority to use then using raft.
-        elif element == '~' and not isempty(itemAvailable):
+        elif element == '~' and itemAvailable:
+        
+            #print("current itemAvailable seeing")
+            #print(itemAvailable)    
+            
             if raftState:
-                return []
-            elif 'o' in itemAvailable:
+                #print("on the raft")
+                return {}
+            elif 'o' in itemAvailable and itemAvailable['o'] >= 1:
                 return 'o'
-            elif 'r' in itemAvailable:
+            elif 'r' in itemAvailable and itemAvailable['r'] >= 1:
                 return 'r'
         else:
-            return []
+            return {}
      
-    # return the item when it needs collect
+    # return the item when it needs to collect
     # by consequence of getting there
     def getItemCollected(self, d):
         
         element = self.grid[d[0]][d[1]]
-        itemlists = {'k', 'o', 'a', 'r', '$'}
-
+        itemlists = {'k', 'o', 'a','$'}
         if element in itemlists:
             return element
+            
+        elif element == 'T':
+            return 'r'
+        return {}
 
-        return []
+    # get raft state
+    def getRaftState(self):
+        return self.agentState
 
     # this function will return true or false
     # for the check whether it has legal path 
     # for the a_star algorithm
-    def checkLegalState(self, d,items):
+    def checkLegalState(self, d,items, currRaftState):
 
-        raftState = self.getRaftState()
+        raftState = currRaftState
         element = self.grid[d[0]][d[1]]
         
-        obstacles = ['~', 'T', '-', '*']
+        obstacles = ['~', 'T', '-', '*', '?']
 
 
         # if we are already on the raft or 
         # have items to cross water
         if (element  == '~' and (raftState == 1 or ('r' in items and items['r'] > 0) 
                                     or ('o' in items and items['o'] > 0 ) ) ):
+            #if raftState == 1:
+            #    print("raft found")
             return 1
             
         # if we have key and door is the neighbour
@@ -188,17 +201,13 @@ class Node:
         
 # this class will implement node class but specific to our problem.
 class PathNode(Node):
-    def __init__(self, position, itemAvailable = {}, cost = 0, parent=None, raftState = 0, itemsUsed = {}):
+    def __init__(self, position, itemAvailable = {}, cost = 0, parent=None, raftState = 0):
     
         Node.__init__(self, position, cost, parent)
         self.raftState = raftState
-        self.itemsUsed = itemsUsed
         self.itemAvailable = itemAvailable
         self.newItemsCollected = {}
         #self.element = element
-        
-    def getItemsUsedSofar(self):
-        return self.itemsUsed
         
     def getItemsCollectedSofar(self):
         return self.newItemsCollected
@@ -214,10 +223,24 @@ class PathNode(Node):
         
     def getItemAvailable(self):
         return self.itemAvailable
+
+    # get raft state
+    def getRaftState(self):
+        return self.raftState
+
+    def setRaftState(self, raftState):
+        self.raftState = raftState
+
+
         
  
 
-def astarItems(graph, start, goal, itemsAvailable):
+def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
+    
+    #itemsAvailable = intialItems.copy()
+
+    #print("initial state")
+    #print(initialRaftState)
     # Fringe. Nodes not visited yet
     openList = PriorityQueue()
 
@@ -226,8 +249,9 @@ def astarItems(graph, start, goal, itemsAvailable):
 
     start_tuple = tuple(start)
     goal_tuple = tuple(goal)
-
-    node = PathNode(start_tuple, itemsAvailable)
+    
+    node = PathNode(start_tuple, itemsAvailable.copy())
+    node.setRaftState(initialRaftState)
     openList.push(node)
 
     
@@ -260,59 +284,60 @@ def astarItems(graph, start, goal, itemsAvailable):
         #print(position)
             
         curr_available = curr_node.getItemAvailable()
-        
+        itemCollectedList = curr_node.getItemsCollectedSofar()
+        raftState = curr_node.getRaftState()
         #print("currently available item origin:")
         #print(curr_available) 
         
-        for childPosition, actionCost, itemRequired, itemCollected in graph.getChildren(position, curr_available):
+        for childPosition, actionCost, itemRequired in graph.getChildren(position, curr_available, raftState):
         
             #print("neibour position:", childPosition)
         
             # Only add to the open list if it's not expanded yet
             if not tuple(childPosition) in closedList:
             
-                # updating the items used to get to the child position
-                itemUsedList = curr_node.getItemsUsedSofar()
-                itemCollectedList = curr_node.getItemsCollectedSofar()
-                
-                copy_available_item = curr_available
+                # copyAvailableItem               
+                copy_available_item = curr_available.copy()
+
                 if itemRequired:
-                                            
-                    itemUsedList = incrementDict(itemUsedList, itemRequired)
-                    copy_available_item = curr_available
-                    copy_available_item[itemRequired] -= 1
+                    copy_available_item = deductItem(copy_available_item, itemRequired)
+
+                childRaftSate = raftState
+                
+                if itemRequired == 'r':
                     
-                if itemCollected:
-                    #print("currently available item")
-                    #print(copy_available_item)
-                    itemCollectedList = incrementDict(itemCollectedList, itemCollected)
-                    #print("Item collected:")
-                    #print(itemCollectedList)
-                    copy_available_item = incrementDict(copy_available_item, itemCollected)
-                
-                raftState = 0
-                if itemUsedList and 'r' in itemUsedList and itemUsedList['r'] > 0:
-                    raftState = 1
-                
+                    #print('raft required at')
+                    #print(childPosition)
+                    
+                    childRaftSate = 1
+                '''
+                elif childRaftSate == 1:
+                    
+                    print('raft reset at')
+                    print(childPosition)
+                    
+                    childRaftSate = 0
+                '''
+                    
                 
                 # creating new child node and push to the openlist
-                childNode = PathNode(tuple(childPosition), copy_available_item, cost + actionCost, curr_node, raftState, itemUsedList)
-                childNode.setItemCollected(itemCollectedList)
+                childNode = PathNode(tuple(childPosition), copy_available_item, cost + actionCost, curr_node, childRaftSate)
                 openList.push(childNode, childNode.cost + graph.getHCost(childPosition, goal))
 
     path = []
     totalItemUsed = []
     totalNewItemCollected = []
-    
+    itemUsedState = False
+    finalItemList = []
+    finalRaftState = []
     if position == goal_tuple:
-        totalItemUsed = goalNode.getItemsUsedSofar()
-        totalNewItemCollected = goalNode.getItemsCollectedSofar()
-        print("totalItemUsed:")
-        print(totalItemUsed)
+        finalItemList = goalNode.getItemAvailable()    
+        itemUsedState = confirmItemUsed(finalItemList, itemsAvailable)
+        finalRaftState = goalNode.getRaftState()
+        #print("final Item available:")
+        #print(goalNode.getItemAvailable())
         
-        print("totalNewItemCollected:")
-        print(totalNewItemCollected)
-        
+
         # Ensure a path has been found
         position_list = list(position)
         
@@ -322,20 +347,44 @@ def astarItems(graph, start, goal, itemsAvailable):
             position_list = list(position)
             path.insert(0, position_list)
 
-    return path, totalItemUsed, totalNewItemCollected
+    return [path, itemUsedState] #finalItemList, raftState]
     
+def confirmItemUsed(finalItems, itemsAvailable):
+    itemsList = ['r','o', 'k', 'a']
+    '''
     
+    print("initial Item available:")
+    print(itemsAvailable)
+
+    print("final Item available:")
+    print(finalItems)
+    '''
+
+    result = False
+    for item in itemsList:
+        if finalItems[item] != itemsAvailable[item]:
+            result = True
+            return result
+
+    return result
     
 def incrementDict( user_dict, item):
-
+    permenantItemList = {'a', 'k'}
     
-    if item in user_dict:
+    if item in user_dict and item not in permenantItemList:
         user_dict[item] += 1
     else:
         user_dict[item] = 1
     return user_dict
     
+def deductItem( itemDict, item):
     
+    permenantItemList = {'a', 'k'}
+    
+    if item not in permenantItemList:
+        itemDict[item] -= 1
+        
+    return itemDict
     
     
     
