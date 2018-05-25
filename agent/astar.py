@@ -161,15 +161,13 @@ class AstarMap(Graph):
         raftState = currRaftState
         element = self.grid[d[0]][d[1]]
         
-        obstacles = ['~', 'T', '-', '*']
+        obstacles = ['~', 'T', '-', '*', '?']
 
 
         # if we are already on the raft or 
         # have items to cross water
         if (element  == '~' and (raftState == 1 or ('r' in items and items['r'] > 0) 
                                     or ('o' in items and items['o'] > 0 ) ) ):
-            #if raftState == 1:
-                #print("raft found")
             return 1
             
         # if we have key and door is the neighbour
@@ -227,15 +225,20 @@ class PathNode(Node):
     # get raft state
     def getRaftState(self):
         return self.raftState
+
+    def setRaftState(self, raftState):
+        self.raftState = raftState
+
+
         
  
 
-def astarItems(graph, start, goal, itemsAvailable):
+def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
     
     #itemsAvailable = intialItems.copy()
 
-    #print("initial item list")
-    #print(itemsAvailable)
+    #print("initial state")
+    #print(initialRaftState)
     # Fringe. Nodes not visited yet
     openList = PriorityQueue()
 
@@ -244,8 +247,9 @@ def astarItems(graph, start, goal, itemsAvailable):
 
     start_tuple = tuple(start)
     goal_tuple = tuple(goal)
-
+    
     node = PathNode(start_tuple, itemsAvailable.copy())
+    node.setRaftState(initialRaftState)
     openList.push(node)
 
     
@@ -296,27 +300,38 @@ def astarItems(graph, start, goal, itemsAvailable):
                 if itemRequired:
                     copy_available_item = deductItem(copy_available_item, itemRequired)
 
+                childRaftSate = raftState
                 
                 if itemRequired == 'r':
-                    '''
-                    print('raft required at')
+                    
+                    #print('raft required at')
+                    #print(childPosition)
+                    
+                    childRaftSate = 1
+                '''
+                elif childRaftSate == 1:
+                    
+                    print('raft reset at')
                     print(childPosition)
-                    '''
-                    raftState = 1
-                
+                    
+                    childRaftSate = 0
+                '''
+                    
                 
                 # creating new child node and push to the openlist
-                childNode = PathNode(tuple(childPosition), copy_available_item, cost + actionCost, curr_node, raftState)
+                childNode = PathNode(tuple(childPosition), copy_available_item, cost + actionCost, curr_node, childRaftSate)
                 openList.push(childNode, childNode.cost + graph.getHCost(childPosition, goal))
 
     path = []
     totalItemUsed = []
     totalNewItemCollected = []
     itemUsedState = False
+    finalItemList = []
+    finalRaftState = []
     if position == goal_tuple:
-        
-        itemUsedState = confirmItemUsed(goalNode.getItemAvailable(), itemsAvailable)
-        
+        finalItemList = goalNode.getItemAvailable()    
+        itemUsedState = confirmItemUsed(finalItemList, itemsAvailable)
+        finalRaftState = goalNode.getRaftState()
         #print("final Item available:")
         #print(goalNode.getItemAvailable())
         
@@ -330,11 +345,12 @@ def astarItems(graph, start, goal, itemsAvailable):
             position_list = list(position)
             path.insert(0, position_list)
 
-    return [path, itemUsedState]
+    return [path, itemUsedState] #finalItemList, raftState]
     
 def confirmItemUsed(finalItems, itemsAvailable):
     itemsList = ['r','o', 'k', 'a']
     '''
+    
     print("initial Item available:")
     print(itemsAvailable)
 
