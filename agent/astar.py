@@ -168,6 +168,8 @@ class AstarMap(Graph):
         # have items to cross water
         if (element  == '~' and (raftState == 1 or ('r' in items and items['r'] > 0) 
                                     or ('o' in items and items['o'] > 0 ) ) ):
+            #if raftState == 1:
+            #    print("raft found")
             return 1
             
         # if we have key and door is the neighbour
@@ -308,14 +310,14 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
                     #print(childPosition)
                     
                     childRaftSate = 1
-                '''
+                
                 elif childRaftSate == 1:
                     
-                    print('raft reset at')
-                    print(childPosition)
+                    #print('raft reset at')
+                    #print(childPosition)
                     
                     childRaftSate = 0
-                '''
+                
                     
                 
                 # creating new child node and push to the openlist
@@ -376,9 +378,9 @@ def incrementDict( user_dict, item):
     return user_dict
     
 def deductItem( itemDict, item):
-    
+
     permenantItemList = {'a', 'k'}
-    
+
     if item not in permenantItemList:
         itemDict[item] -= 1
         
@@ -386,3 +388,4 @@ def deductItem( itemDict, item):
     
     
     
+
