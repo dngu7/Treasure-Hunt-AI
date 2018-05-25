@@ -52,20 +52,21 @@ class Agent:
         for coordinate in self.visibleCoordinates:
             x = coordinate[0]
             y = coordinate[1]
+            reachPoints = 0
             self.astar_memory[x][y] = astarItems(self.AstarMap,self.position, [x,y], self.items)
-            if len(self.astar_memory[x][y][0]) > 0:
-                if len(self.astar_memory[x][y][1]) == 0:
-                    reachPoints = 50
-                else:
-                    reachPoints = 1
-                ## reduce points based on the distance
-                distancePoints = len(self.astar_memory[x][y][0])
-                coordPoints = self.calculateCoordinatePoints([x,y])
-                if reachPoints:
-                    self.global_map_values[x][y] = reachPoints - distancePoints + coordPoints
-                    print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints))
+            #if len(self.astar_memory[x][y][0]) > 0:
+            if len(self.astar_memory[x][y][1]) == 0:
+                reachPoints = 50
             else:
-                self.global_map_values[x][y] = 0
+                reachPoints = 1
+                ## reduce points based on the distance
+            distancePoints = (len(self.astar_memory[x][y][0])) * -0.5
+            coordPoints = self.calculateCoordinatePoints([x,y])
+                #if reachPoints:
+            self.global_map_values[x][y] = reachPoints + distancePoints + coordPoints
+            print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0])))
+            #else:
+                #self.global_map_values[x][y] = 0
 
         
     ## Controller converts a list of positions into keyboard actions for the agent ##
@@ -113,9 +114,11 @@ class Agent:
         obstacle = self.global_map[x][y]
 
 
-        if (obstacle == '*'):
-            self.exploredCoordinates.append(obstacle)   #return 0 pts if wall
-            self.visibleCoordinates.remove(obstacle)
+        if (obstacle == '*')or (obstacle == '^'):
+            if [x,y] not in self.exploredCoordinates:
+                self.exploredCoordinates.append([x,y])   #return 0 pts if wall
+            if [x,y] in self.visibleCoordinates:
+                self.visibleCoordinates.remove([x,y])
             return 0
         
         elif obstacle in ['k','a','o']:  #return 10 pts if new items collectable without losing items
@@ -147,7 +150,7 @@ class Agent:
 
         elif obstacle == '~': # values exploring the water depending on whether agent is currently on a raft
             points = 0
-            if self.items['o'] < 0 or self.items['r'] < 0:
+            if self.items['o'] < 1 or self.items['r'] < 1:
                 return 0
             for x_1 in range(-2,3):
                 for y_2 in range(-2,3):
@@ -223,12 +226,14 @@ class Agent:
             self.direction = (self.direction - 90) % 360
         elif action == 'F' or action == 'f':
             
+            if self.position not in self.exploredCoordinates:
+                    self.exploredCoordinates.append(self.position)
+            if self.position in self.visibleCoordinates:
+                self.visibleCoordinates.remove(self.position)
+
             if self.global_map[next_position[0]][next_position[1]] not in self.blocks:
                 self.position = next_position
-                if next_position not in self.exploredCoordinates:
-                    self.exploredCoordinates.append(next_position)
-                if next_position in self.visibleCoordinates:
-                    self.visibleCoordinates.remove(next_position)
+
 
                 nextElement = self.global_map[next_position[0]][next_position[1]]
                 prevElement = self.global_map[self.position[0]][self.position[1]]
@@ -357,12 +362,13 @@ class Agent:
                 print("aStarMemory: {}".format(self.astar_memory[nextPosition[0]][nextPosition[1]]))
                 self.changeItems(totalItemUsed, totalNewItemCollected)
                 self.controller(newPath)
+                does_nothing = self.type_to_move()
             #Use this for manual human gameplay    
             #self.TCP_Socket.send_action(action_list)
             #self.maproute_testing = []
 
             #Use this for AI Keyboard Control
-            does_nothing = self.type_to_move()
+            
             if not self.actionQueue.empty():
                 action_list = self.actionQueue.get()
                 print(action_list)
