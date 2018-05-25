@@ -378,9 +378,9 @@ def incrementDict( user_dict, item):
     return user_dict
     
 def deductItem( itemDict, item):
-    
+
     permenantItemList = {'a', 'k'}
-    
+
     if item not in permenantItemList:
         itemDict[item] -= 1
         
