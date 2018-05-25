@@ -239,8 +239,8 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
     
     #itemsAvailable = intialItems.copy()
 
-    print("initial state")
-    print(initialRaftState)
+    #print("initial state")
+    #print(initialRaftState)
     # Fringe. Nodes not visited yet
     openList = PriorityQueue()
 
@@ -352,6 +352,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
 def confirmItemUsed(finalItems, itemsAvailable):
     itemsList = ['r','o', 'k', 'a']
     '''
+    
     print("initial Item available:")
     print(itemsAvailable)
 
