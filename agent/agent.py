@@ -35,6 +35,15 @@ class Agent:
         self.visibleCoordinates = [[78,78],[78,79],[78,80],[78,81],[78,82],[79,78],[79,79],[79,80],[79,81],[79,82],[80,78],[80,79],[80,81],[80,82],[81,78],[81,79],[81,80],[81,81],[81,82],[82,78],[82,79],[82,80],[82,81],[82,82]]
         self.exploredCoordinates = [[80,80]]
 
+
+    # this function is to print the GlobalMap with Shrinked size
+    # so it is easeir to debug
+    def printMinimizedGlobalMap(self):
+        
+        colEdge = self.colEdge
+        rowEdge = self.rowEdge
+
+
     def decideNextPosition(self):
         nextPosition = [80,80]
         points = -100000
