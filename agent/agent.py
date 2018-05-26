@@ -65,8 +65,16 @@ class Agent:
         
     def check_routehome(self, startingpoint, treasurepoint):
         firsttripresult = self.astarMinimum(self.AstarMap,startingpoint, treasurepoint, self.items, self.onRaft)
+        temp_globalmap = self.global_map
+        stonelocations = firsttripresult[4]
+        print('stones used. Locations: {}'.format(stonelocations))
+        for locations in stonelocations:
+            
+            temp_globalmap[locations[0]][locations[1]] = ' '
+        
+        temp_AstarMap = AstarMap(temp_globalmap)
         if len(firsttripresult[0]) > 0:
-            hometripresult = self.astarMinimum(self.AstarMap, treasurepoint, self.home, firsttripresult[2], 0)
+            hometripresult = self.astarMinimum(temp_AstarMap, treasurepoint, self.home, firsttripresult[2], 0)
         else:
             return 0
         if len(hometripresult[0]) > 0:
