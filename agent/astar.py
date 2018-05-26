@@ -15,7 +15,7 @@ class Graph:
     """
     def getChildren(self, position):
         pass
-        
+
     def getHCost(self, position, goal):
         '''
         Heuristic value of a certain node. For a dijkstra implementation, return always 0
