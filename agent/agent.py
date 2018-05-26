@@ -91,13 +91,13 @@ class Agent:
             items['o'] = count
             items['r'] = 0
 
-            testRoute = astarItems(AstarMap, position, goal, items, onRaft)
+            testRoute = astarItems(AstarMap, position, goal, items, onRaft, [])
             print('testroute {} Length: {} stonecount {} items {} onRaft {}'.format(goal, len(testRoute[0]), count, items, onRaft))
 
             if (len(testRoute[0])) > 0:
                 return testRoute
         
-        return astarItems(AstarMap, position, goal, starting_item_list, onRaft)
+        return astarItems(AstarMap, position, goal, starting_item_list, onRaft, [])
 
     def update_global_map_values(self):
         removecoordinates = []
