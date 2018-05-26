@@ -22,9 +22,9 @@ class Graph:
         '''
         pass
 
+
+# function to return manhattan heuristics
 def manhattan(start, goal):
-    
-    
     x1,y1 = start
     x2,y2 = goal
     
@@ -33,7 +33,6 @@ def manhattan(start, goal):
 
 # inherit graph class to suit our global agent map.        
 class AstarMap(Graph):
-    
     
     requiredItems = {'-' : 'k', 'T' : 'a'}
     
@@ -74,7 +73,7 @@ class AstarMap(Graph):
     # cost - the cost to get on to the current position to the neighbour one
     #      - will be always 1.
     # item - gives what sort of items it needs in order to get to the neighbour one
-    def getChildren(self, point, itemAvailable, currRaftState):
+    def getChildren(self, point, itemAvailable, currRaftState, parentStonePlace):
         y,x = point
     
         # find all indices that is neibour to current point
@@ -95,7 +94,7 @@ class AstarMap(Graph):
             
             # if crossing to one of neibbour is legal,
             # add on to the legalNeighbours lists
-            if self.checkLegalState(direction, itemAvailable, currRaftState ):
+            if self.checkLegalState(direction, itemAvailable, currRaftState, parentStonePlace ):
                 element = self.grid[direction[0]][direction[1]]
                 itemRequired = self.getItemRequired(direction, itemAvailable, currRaftState)
                 cost2Cross = 1 # assuming cost to go to next index is always one.
@@ -156,28 +155,45 @@ class AstarMap(Graph):
     # this function will return true or false
     # for the check whether it has legal path 
     # for the a_star algorithm
-    def checkLegalState(self, d,items, currRaftState):
+    def checkLegalState(self, d,items, currRaftState, parentStonePlace):
 
         raftState = currRaftState
         element = self.grid[d[0]][d[1]]
         
         obstacles = ['~', 'T', '-', '*', '?','.']
 
+        '''
+        if d in parentStonePlace:
+            print("there was a parent stone")
+        else:
+            print("these are differences")
+            print(d)
+            print(parentStonePlace)
+
+        if d == [7,2]:
+            print('element {}, raftState {}'.format(element, raftState) )
+            print('parentStonePlace {}'.format(parentStonePlace) )
+            print('items: {}'.format(items) )
+        '''
 
         # if we are already on the raft or 
         # have items to cross water
         if (element  == '~' and (raftState == 1 or ('r' in items and items['r'] > 0) 
-                                    or ('o' in items and items['o'] > 0 ) ) ):
-            #if raftState == 1:
-            #    print("raft found")
+                                    or ('o' in items and items['o'] > 0 ) 
+                                    or (d in parentStonePlace)
+                                     ) ):
+
             return 1
             
         # if we have key and door is the neighbour
         elif (element == '-' and 'k' in items and items['k'] > 0 ):
             return 1
-        # if we have axe to cut down the tree
-        elif (element == 'T' and 'a' in items and items['a'] > 0 ):
+        # if we have axe to cut down the tree and not on the raft
+        elif (element == 'T' and 'a' in items and items['a'] > 0 
+                and raftState == 0):
             return 1
+
+        # if we have
 
         # if the neighbour is not obstacles
         elif (element not in obstacles ):
@@ -188,7 +204,7 @@ class AstarMap(Graph):
           return 0
 
 
-############### Astar Implementations ###############
+############### Node Implementations ###############
 
 
 class Node:
@@ -207,6 +223,7 @@ class PathNode(Node):
         self.raftState = raftState
         self.itemAvailable = itemAvailable
         self.newItemsCollected = {}
+        self.stoneLocations = []
         #self.element = element
         
     def getItemsCollectedSofar(self):
@@ -231,25 +248,31 @@ class PathNode(Node):
     def setRaftState(self, raftState):
         self.raftState = raftState
 
+    def getStonePlaced(self):
+        return self.stoneLocations
+
+    def addStonePlaced(self, stoneCoord):
+        self.stoneLocations += stoneCoord
 
         
- 
+############### Astar Implementations ###############
 
 def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
     
     #itemsAvailable = intialItems.copy()
+    #print("initial state") print(itemsAvailable)
 
-    #print("initial state")
-    #print(initialRaftState)
     # Fringe. Nodes not visited yet
     openList = PriorityQueue()
 
     # Visited Nodes. Each one will store it's parent position
     closedList = {}
 
+
+    # assign some start and goal points
+    # and push start point as a node to openList.
     start_tuple = tuple(start)
     goal_tuple = tuple(goal)
-    
     node = PathNode(start_tuple, itemsAvailable.copy())
     node.setRaftState(initialRaftState)
     openList.push(node)
@@ -257,13 +280,12 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
     
     while openList:
         
-        #print("entered in open list loop")        
-        curr_node, _ = openList.pop()
-        
+        # if openList does not contain any node
+        # we will break.     
+        curr_node, _ = openList.pop()    
         if not curr_node:
             break
         
-        #print("poped openlist") 
         position, cost = curr_node.position, curr_node.cost
 
         if position in closedList:
@@ -275,68 +297,83 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
             closedList[position] = curr_node.parent.position
         else:   
             closedList[position] = curr_node.position
-            
+        
+        # arrived to goal so save it as goal node.
         if position == goal_tuple:
             goalNode = curr_node
             break
             
-        #print("curr position")
-        #print(position)
-            
+        # copy some parent properties
         curr_available = curr_node.getItemAvailable()
-        itemCollectedList = curr_node.getItemsCollectedSofar()
         raftState = curr_node.getRaftState()
-        #print("currently available item origin:")
-        #print(curr_available) 
+        parentStonePlace = curr_node.getStonePlaced().copy()
+
+        '''
+        print('parentStonePlace {}'.format(parentStonePlace))
+
+        if list(position) == [7,1]:
+            print("raft state for 7,1")
+            print(raftState)
+        '''
         
-        for childPosition, actionCost, itemRequired, element in graph.getChildren(position, curr_available, raftState):
-        
-            #print("neibour position:", childPosition)
-        
+        # for each legal child for current parent,
+        for childPosition, actionCost, itemRequired, element in graph.getChildren(position, curr_available, 
+                                                                                  raftState,parentStonePlace):
+            copyStonePlaced = parentStonePlace.copy()
+
+            '''
+            if childPosition == [7,2]:
+                print("at least 7,2 is legal")
+            '''
+
             # Only add to the open list if it's not expanded yet
             if not tuple(childPosition) in closedList:
             
                 # copyAvailableItem               
                 copy_available_item = curr_available.copy()
 
+                # deduct from item list if it was required
                 if itemRequired:
                     copy_available_item = deductItem(copy_available_item, itemRequired)
 
                 childRaftSate = raftState
                 
+                # updating child raftstate based on where current child is
+                # and the item required to get to the child.
                 if itemRequired == 'r':
-                    
-                    #print('raft set at')
-                    #print(childPosition)
-                    
                     childRaftSate = 1
                 
                 elif childRaftSate == 1 and element != '~':
-                    #print("item remaining")
-                    #print(copy_available_item)
-                    #print('raft reset at')
-                    #print(childPosition)
                     childRaftSate = 0
                 
-                    
+                # updating the stone coordinate that was used for child.
+                # append to the parent ones.
+                stoneCoord = []
+                if itemRequired == 'o':
+                    stoneCoord = [childPosition]
+                    copyStonePlaced += stoneCoord       
                 
                 # creating new child node and push to the openlist
                 childNode = PathNode(tuple(childPosition), copy_available_item, cost + actionCost, curr_node, childRaftSate)
+                childNode.addStonePlaced(copyStonePlaced)
                 openList.push(childNode, childNode.cost + graph.getHCost(childPosition, goal))
 
+    
+    # intialize the returning variables
     path = []
     totalItemUsed = []
     totalNewItemCollected = []
     itemUsedState = False
-    finalItemList = []
-    finalRaftState = []
+    finalItemList = itemsAvailable
+    finalRaftState = 1
+    finalStonePlace = []
+
+    # if we arrive goal, we are updating those variables.
     if position == goal_tuple:
         finalItemList = goalNode.getItemAvailable()    
         itemUsedState = confirmItemUsed(finalItemList, itemsAvailable)
-        finalRaftState = goalNode.getRaftState()
-        #print("final Item available:")
-        #print(goalNode.getItemAvailable())
-        
+        finalRaftState = goalNode.getRaftState()   
+        finalStonePlace = goalNode.getStonePlaced()     
 
         # Ensure a path has been found
         position_list = list(position)
@@ -347,19 +384,13 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
             position_list = list(position)
             path.insert(0, position_list)
 
-    return [path, itemUsedState] #finalItemList, raftState]
-    
+    return [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace] #finalItemList, ]
+
+# This function compares two item dictionaries 
+# and see whether they have the same counting or
+# not 
 def confirmItemUsed(finalItems, itemsAvailable):
     itemsList = ['r','o', 'k', 'a']
-    '''
-    
-    print("initial Item available:")
-    print(itemsAvailable)
-
-    print("final Item available:")
-    print(finalItems)
-    '''
-
     result = False
     for item in itemsList:
         if finalItems[item] != itemsAvailable[item]:
@@ -368,6 +399,7 @@ def confirmItemUsed(finalItems, itemsAvailable):
 
     return result
     
+# increment dictionary expect the permenant item
 def incrementDict( user_dict, item):
     permenantItemList = {'a', 'k'}
     
@@ -376,12 +408,11 @@ def incrementDict( user_dict, item):
     else:
         user_dict[item] = 1
     return user_dict
-    
+
+# decrement dictionary expect the permenant item
 def deductItem( itemDict, item):
     
     permenantItemList = {'a', 'k'}
-    #print("items")
-    #print(item)
     if item and item not in permenantItemList:
         itemDict[item] -= 1
         
