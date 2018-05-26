@@ -40,7 +40,7 @@ class Agent:
         points = -100000
 
         if self.items['$'] > 0:
-            if self.decide_routehome(self.position):
+            if self.decideRouteHome(self.position):
                 return nextPosition
 
         for coordinate in self.visibleCoordinates:
@@ -49,23 +49,22 @@ class Agent:
             if self.global_map_values[i][j] > points:
                 points = self.global_map_values[i][j]
                 nextPosition = [i,j]
-                print('[{},{}] has higher points ({})'.format(i,j, self.global_map_values[i][j]))
-            else:
-                print('[{},{}] failed and has less points ({})'.format(i,j, self.global_map_values[i][j]))
+                #print('[{},{}] has higher points ({})'.format(i,j, self.global_map_values[i][j]))
+            #else:
+                #print('[{},{}] failed and has less points ({})'.format(i,j, self.global_map_values[i][j]))
         return nextPosition
         
     def check_routehome(self, startingpoint, treasurepoint):
-        firsttripresult = astarItems(self.AstarMap,startingpoint, treasurepoint, self.items, self.onRaft)
+        firsttripresult = self.astarMinimum(self.AstarMap,startingpoint, treasurepoint, self.items, self.onRaft)
         if len(firsttripresult[0]) > 0:
-            hometripresult = astarItems(self.AstarMap, treasurepoint, self.home, firsttripresult[2], 0)
+            hometripresult = self.astarMinimum(self.AstarMap, treasurepoint, self.home, firsttripresult[2], 0)
         else:
             return 0
-
         if len(hometripresult[0]) > 0:
             return 1
     
-    def decide_routehome(self,startingpoint):
-        astarresult = astarItems(self.AstarMap,startingpoint, self.home, self.items, 0)
+    def decideRouteHome(self,startingpoint):
+        astarresult = self.astarMinimum(self.AstarMap,startingpoint, self.home, self.items, 0)
         print('PathHome: {}'.format(astarresult))
         if len(astarresult[0]) > 0:
             if startingpoint == self.position:
@@ -73,7 +72,24 @@ class Agent:
             return 1
         else:
             return 0
+    
+    def astarMinimum(self, AstarMap, position, goal, items, onRaft):
+        stoneCount = items['o']
+        starting_item_list = items.copy()
+
+        for count in range(stoneCount+1):
+            items = starting_item_list.copy()
+            items['o'] = count
+            items['r'] = 0
+
+            testRoute = astarItems(AstarMap, position, goal, items, onRaft)
+            print('testroute {} Length: {} stonecount {} items {} onRaft {}'.format(goal, len(testRoute[0]), count, items, onRaft))
+
+            if (len(testRoute[0])) > 0:
+                return testRoute
         
+        return astarItems(AstarMap, position, goal, starting_item_list, onRaft)
+
     def update_global_map_values(self):
         removecoordinates = []
         for coordinate in self.visibleCoordinates:
@@ -89,16 +105,11 @@ class Agent:
                 print('Removed: {} Reason: Wall or already went through'.format(coordinate))
                 continue
             if obstacle == '~' and self.items['r'] < 1 and self.items['o'] < 1 and self.onLand:
-                self.global_map_values[x][y] = -10000
+                self.global_map_values[x][y] = -10001
                 #print('Skipped water: [{} {}]'.format(x,y))
                 continue
             
-            withoutItemRoute = astarItems(self.AstarMap,self.position, [x,y], self.emptyitems, self.onRaft)
-            
-            if len(withoutItemRoute[0]):
-                self.astar_memory[x][y] = withoutItemRoute
-            else:
-                self.astar_memory[x][y] = astarItems(self.AstarMap,self.position, [x,y], self.items, self.onRaft)
+            self.astar_memory[x][y] = self.astarMinimum(self.AstarMap,self.position, [x,y], self.items, self.onRaft)
 
             if len(self.astar_memory[x][y][0]) > 0:
                 if self.astar_memory[x][y][1]:
@@ -114,7 +125,7 @@ class Agent:
 
             else:
                 print('{},{} is not reachhable'.format(x,y))
-                self.global_map_values[x][y] = -10000
+                self.global_map_values[x][y] = -10002
             
 
             if (obstacle == ' ') and coordPoints < 2.5 and reachPoints > 1:
@@ -128,7 +139,7 @@ class Agent:
             
             self.visibleCoordinates.remove(coordinate)
             self.exploredCoordinates.append(coordinate)
-            self.global_map_values[x][y] = -10000
+            self.global_map_values[coordinate[0]][coordinate[1]] = -10003
         #print('Final Visible Coordinates: {}'.format(self.visibleCoordinates))
                 
     ## Controller converts a list of positions into keyboard actions for the agent ##
@@ -298,8 +309,7 @@ class Agent:
                 prevElement = self.global_map[self.position[0]][self.position[1]]
                 self.position = next_position
                 nextElement = self.global_map[next_position[0]][next_position[1]]
-                
-
+            
                 if nextElement in self.items:
                     self.items[nextElement] += 1
                 
