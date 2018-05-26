@@ -325,7 +325,6 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
             if childPosition == [7,2]:
                 print("at least 7,2 is legal")
             '''
-
             # Only add to the open list if it's not expanded yet
             if not tuple(childPosition) in closedList:
             
@@ -383,7 +382,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
             position = closedList[position]
             position_list = list(position)
             path.insert(0, position_list)
-
+            
     return [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace] #finalItemList, ]
 
 # This function compares two item dictionaries 
