@@ -176,7 +176,8 @@ class AstarMap(Graph):
         elif (element == '-' and 'k' in items and items['k'] > 0 ):
             return 1
         # if we have axe to cut down the tree
-        elif (element == 'T' and 'a' in items and items['a'] > 0 ):
+        elif (element == 'T' and 'a' in items and items['a'] > 0 
+                and raftState == 0):
             return 1
 
         # if the neighbour is not obstacles
@@ -292,7 +293,6 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
         for childPosition, actionCost, itemRequired, element in graph.getChildren(position, curr_available, raftState):
         
             #print("neibour position:", childPosition)
-        
             # Only add to the open list if it's not expanded yet
             if not tuple(childPosition) in closedList:
             
@@ -328,8 +328,8 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
     totalItemUsed = []
     totalNewItemCollected = []
     itemUsedState = False
-    finalItemList = []
-    finalRaftState = []
+    finalItemList = itemsAvailable
+    finalRaftState = 1
     if position == goal_tuple:
         finalItemList = goalNode.getItemAvailable()    
         itemUsedState = confirmItemUsed(finalItemList, itemsAvailable)
@@ -347,12 +347,11 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
             position_list = list(position)
             path.insert(0, position_list)
 
-    return [path, itemUsedState, finalItemList] #finalItemList, raftState]
+    return [path, itemUsedState, finalItemList, finalRaftState ] #finalItemList, ]
     
 def confirmItemUsed(finalItems, itemsAvailable):
     itemsList = ['r','o', 'k', 'a']
-    '''
-    
+    '''    
     print("initial Item available:")
     print(itemsAvailable)
 
