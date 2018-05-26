@@ -261,7 +261,7 @@ class PathNode(Node):
         
 ############### Astar Implementations ###############
 
-def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
+def astarItems(graph, start, goal, itemsAvailable, initialRaftState, illegalEdges):
     
     #itemsAvailable = intialItems.copy()
     #print("initial state") print(itemsAvailable)
@@ -324,11 +324,16 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
         for childPosition, actionCost, itemRequired, element in graph.getChildren(position, curr_available, 
                                                                                   raftState,parentStonePlace):
             copyStonePlaced = parentStonePlace.copy()
-
             '''
             if childPosition == [7,2]:
                 print("at least 7,2 is legal")
             '''
+            # if illegal edges were given 
+            # and current one is illegal, ignore current child.
+            pos1 = list(position).copy()
+            pos2 = childPosition
+            if illegalEdges and ([pos1, pos2] == illegalEdges or [pos2, pos1] == illegalEdges):
+                continue
 
             # Only add to the open list if it's not expanded yet
             if not tuple(childPosition) in closedList:
@@ -355,7 +360,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
                 stoneCoord = []
                 if itemRequired == 'o':
                     stoneCoord = [childPosition]
-                    print(stoneCoord)
+                    #print(stoneCoord)
                     copyStonePlaced += stoneCoord       
                 
                 # creating new child node and push to the openlist
