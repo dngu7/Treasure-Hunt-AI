@@ -98,6 +98,8 @@ class AstarMap(Graph):
                 element = self.grid[direction[0]][direction[1]]
                 itemRequired = self.getItemRequired(direction, itemAvailable, currRaftState)
                 cost2Cross = 1 # assuming cost to go to next index is always one.
+                if itemRequired and (itemRequired == 'o' or itemRequired == 'r') :
+                    cost2Cross = 20
                 legalNeighbours.append( [direction, cost2Cross, itemRequired, element] )
                   
         return legalNeighbours
@@ -197,6 +199,8 @@ class AstarMap(Graph):
 
         # if the neighbour is not obstacles
         elif (element not in obstacles ):
+            #if element == '$':
+            #    print("goal found")
             return 1
         
         # Otherwise illegal
@@ -325,6 +329,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
             if childPosition == [7,2]:
                 print("at least 7,2 is legal")
             '''
+
             # Only add to the open list if it's not expanded yet
             if not tuple(childPosition) in closedList:
             
@@ -350,6 +355,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
                 stoneCoord = []
                 if itemRequired == 'o':
                     stoneCoord = [childPosition]
+                    print(stoneCoord)
                     copyStonePlaced += stoneCoord       
                 
                 # creating new child node and push to the openlist
@@ -382,7 +388,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState):
             position = closedList[position]
             position_list = list(position)
             path.insert(0, position_list)
-            
+
     return [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace] #finalItemList, ]
 
 # This function compares two item dictionaries 
