@@ -34,6 +34,7 @@ class Agent:
         self.AstarMap = AstarMap(self.global_map)
         self.visibleCoordinates = [[78,78],[78,79],[78,80],[78,81],[78,82],[79,78],[79,79],[79,80],[79,81],[79,82],[80,78],[80,79],[80,81],[80,82],[81,78],[81,79],[81,80],[81,81],[81,82],[82,78],[82,79],[82,80],[82,81],[82,82]]
         self.exploredCoordinates = [[80,80]]
+        self.deep_search_limit = 5
 
 
     # this function is to print the GlobalMap with Shrinked size
@@ -63,7 +64,7 @@ class Agent:
                 #print('[{},{}] failed and has less points ({})'.format(i,j, self.global_map_values[i][j]))
         return nextPosition
         
-    def check_routehome(self, startingpoint, treasurepoint):
+    def checkRouteHome(self, startingpoint, treasurepoint):
         firsttripresult = self.astarMinimum(self.AstarMap,startingpoint, treasurepoint, self.items, self.onRaft)
         temp_globalmap = self.global_map
         stonelocations = firsttripresult[4]
@@ -98,7 +99,6 @@ class Agent:
             items = starting_item_list.copy()
             items['o'] = count
             items['r'] = 0
-
             testRoute = astarItems(AstarMap, position, goal, items, onRaft, [])
             print('testroute {} Length: {} stonecount {} items {} onRaft {}'.format(goal, len(testRoute[0]), count, items, onRaft))
 
@@ -106,7 +106,7 @@ class Agent:
                 return testRoute
         
         return astarItems(AstarMap, position, goal, starting_item_list, onRaft, [])
-
+        
     def update_global_map_values(self):
         removecoordinates = []
         for coordinate in self.visibleCoordinates:
@@ -157,47 +157,89 @@ class Agent:
             self.visibleCoordinates.remove(coordinate)
             self.exploredCoordinates.append(coordinate)
             self.global_map_values[coordinate[0]][coordinate[1]] = -10003
-        #print('Final Visible Coordinates: {}'.format(self.visibleCoordinates))
+
+    def calculate_globalMap_points(self, AstarMap, global_map, global_map_values, astar_memory, position, items, onRaft, search_level):
+        removecoordinatesList = []
+        #places a limit on deep search to prevent overload of computer processing power
+        if search_level > self.deep_search_limit:
+            return 0
+        else:
+            #Loop through all visible coordinate on the map and calculate points for each coordinate
+            #Add up values of all coordinates that have value > 0
+            for coordinate in self.visibleCoordinates:
+                x, y = coordinate[0], coordinate[1]
                 
-    ## Controller converts a list of positions into keyboard actions for the agent ##
-    ## These actions are queued in actionQueue and pushed into the game one at a time ##
-    def controller(self, positionList): ## Missing implementation for unlock and cut
-        currentPos = self.position
-        currentDir = self.direction
+                obstacle = global_map[x][y]
+                
+                if (obstacle == '*') or (obstacle == '^') or (obstacle == '.'):
+                    global_map_values[x][y] = -10001
+                    removecoordinatesList.append([x,y])
+                    print('Removed: {} Reason: Wall or already went through'.format(coordinate))
+                    continue
+                elif obstacle == '~' and items['r'] < 1 and items['o'] < 1 and (onRaft == 0):
+                    global_map_values[x][y] = -5000
+                    continue
+                
+                temp_astar_memory = self.astarMinimum(self.AstarMap,self.position, [x,y], self.items, self.onRaft)
+                #placed_stone_list = temp_astar_memory[4]
+                placed_stone_list = []
 
-        if len(positionList) == 0:
-            return
+                #astar returns [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace, nodeTable]
+                #if stones are required placed then we need to which path is the best path based on global map points system
+                if len(placed_stone_list) > 0: 
+                    multipleRoutes = YenKSP(globalmap, source, destination, itemlist, onRaft)
+                    multipleRoutes_points = []
+                    print("Rock Used on Path {}. Multiple paths generated = {}".format([x,y],multipleRoutes))
 
-        if currentPos != positionList[0]:
-            print("Error: Positions do not match {} -> {}". format(currentPos, positionList[0]))
-            return
+                else:
+                    astar_memory[x][y] = temp_astar_memory.copy()
+                    totalPoints, remove_flag, reachPoints, distancePoints, coordPoints = self.calculateTotalCoordPoints(x,y, temp_astar_memory, obstacle)
+                    global_map_values[x][y] = totalPoints
+                    if remove_flag:
+                        removecoordinatesList.append([x,y])
+                    print('No Stones: ({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,obstacle,totalPoints,reachPoints,distancePoints,coordPoints, len(astar_memory[x][y][0])))
 
-        for newPosition in positionList[1:]:
-            movement = (newPosition[0] - currentPos[0], newPosition[1] - currentPos[1])
-            if movement in self.rotationAngleTbl:
-                newDirection = self.rotationAngleTbl[movement]
+            totalMapPoints = self.calculate_TotalMapPoints(global_map_values, removecoordinatesList)
+
+            return [AstarMap, global_map, global_map_values, astar_memory, position, items, onRaft, removecoordinatesList, totalMapPoints]
+            
+            ## loop through all coordinates and add points where > 0 for items only. 
+            #print('Final Visible Coordinates: {}'.format(self.visibleCoordinates))
+                    
+    def calculate_TotalMapPoints(self, global_map_values, removecoordinatesList):
+        totalMapPoints = 0
+        for coordinate in self.visibleCoordinates:
+            if coordinate not in removecoordinatesList:
+                x, y = coordinate[0], coordinate[1]
+                points = global_map_values[x][y]
+                if points > 0:
+                    totalMapPoints += points
+        return totalMapPoints
+
+
+    def calculateTotalCoordPoints(self, x, y, astar_memory, obstacle):
+        remove_flag = 0
+        reachPoints, distancePoints, coordPoints = 0, 0, 0
+        if len(astar_memory[0]) > 0:
+            if astar_memory[1]:
+                reachPoints = 10
             else:
-                print("Error: Invalid movement {} -> {} = {}".format(currentPos, newPosition,movement))
-                return
-            rotationRequired = (newDirection - currentDir) % 360
-            if rotationRequired == 90:
-                self.actionQueue.put('L')
-            elif rotationRequired == 180:
-                self.actionQueue.put('LL')
-            elif rotationRequired == 270:
-                self.actionQueue.put('R')
+                reachPoints = 50
+            distancePoints = (len(astar_memory[0])) * -0.2   #reduce points based on distance
+            coordPoints = self.calculateCoordPoints([x,y])
+            totalPoints = reachPoints + distancePoints + coordPoints
+        else:
+            print('{},{} is not reachhable'.format(x,y))
+            totalPoints = -10002
 
-            if self.global_map[newPosition[0]][newPosition[1]] in self.requiredItems: #if tree or door then cut or unlock
-                if self.global_map[newPosition[0]][newPosition[1]] == 'T':      
-                    self.actionQueue.put('C')
-                elif self.global_map[newPosition[0]][newPosition[1]] == '-':
-                    self.actionQueue.put('U')
+        if (obstacle == ' ') and coordPoints < 2.5 and reachPoints > 1:
+            print('Removed: {} Reason: not enough coordpoints ({})'.format([x,y], coordPoints))
+            remove_flag = 1
+                
+        return totalPoints, remove_flag, reachPoints, distancePoints, coordPoints
 
-            self.actionQueue.put('F')
-            currentPos = newPosition
-            currentDir = newDirection
-    
-    def calculateCoordinatePoints(self, coordinate): # assigns points to each coordinate on the global map
+
+    def calculateCoordPoints(self, coordinate): # assigns points to each coordinate on the global map
         returnhomefunction = 0 ###replace later
         x = coordinate[0]
         y = coordinate[1]
@@ -207,19 +249,19 @@ class Agent:
             if self.onRaft:
                 return 15
             else:
-                return 30
+                return 100
 
         elif obstacle in ['T','-']: # returns 10 pts if agent contains pre-req to collect new items
             if obstacle == 'T' and self.items['a'] > 0:
                 if self.onRaft:
-                    return 40
+                    return 200
                 else:
-                    return 30
+                    return 90
             elif obstacle == '-' and self.items['k'] > 0:
                 if self.onRaft:         # the agent prioritizes obtaining another raft over opening doors
-                    return 15
-                else:
                     return 30
+                else:
+                    return 100
             else:
                 return 0
 
@@ -237,7 +279,6 @@ class Agent:
                                 points += 0.1
                             else:
                                 points += 0.5
-            print('{} {}: points: {}'.format(x,y,points))
             return points
             #possible to shorten this... keep like this until confirmed
 
@@ -256,8 +297,8 @@ class Agent:
                                 points += 0.1
             return points
         elif obstacle == '$':
-            if self.check_routehome(self.position, [x,y]):
-                return 9999999
+            if self.checkRouteHome(self.position, [x,y]):
+                return 999999999
             return 0
         return 0
 
@@ -306,7 +347,47 @@ class Agent:
 
 
             self.AstarMap.updateGrid(self.global_map, self.onRaft)
-  
+
+    ## agentController converts a list of positions into keyboard actions for the agent ##
+    ## These actions are queued in actionQueue and pushed into the game one at a time ##
+    def agentController(self, positionList): ## Missing implementation for unlock and cut
+        currentPos = self.position
+        currentDir = self.direction
+
+        if len(positionList) == 0:
+            return
+
+        if currentPos != positionList[0]:
+            print("Error: Positions do not match {} -> {}". format(currentPos, positionList[0]))
+            return
+
+        for newPosition in positionList[1:]:
+            movement = (newPosition[0] - currentPos[0], newPosition[1] - currentPos[1])
+            if movement in self.rotationAngleTbl:
+                newDirection = self.rotationAngleTbl[movement]
+            else:
+                print("Error: Invalid movement {} -> {} = {}".format(currentPos, newPosition,movement))
+                return
+            rotationRequired = (newDirection - currentDir) % 360
+            if rotationRequired == 90:
+                self.actionQueue.put('L')
+            elif rotationRequired == 180:
+                self.actionQueue.put('LL')
+            elif rotationRequired == 270:
+                self.actionQueue.put('R')
+
+            if self.global_map[newPosition[0]][newPosition[1]] in self.requiredItems: #if tree or door then cut or unlock
+                if self.global_map[newPosition[0]][newPosition[1]] == 'T':      
+                    self.actionQueue.put('C')
+                elif self.global_map[newPosition[0]][newPosition[1]] == '-':
+                    self.actionQueue.put('U')
+
+            self.actionQueue.put('F')
+            currentPos = newPosition
+            currentDir = newDirection
+    
+    ## move_agent takes the AI actions and updates the agent's status on the saved global map. 
+
     def move_agent(self, action):
         next_position = self.give_front_position(self.position)
         #print("{} ({}) next = {} : {}".format(self.position,self.direction, next_position, self.global_map[front_position[0]][front_position[1]]))
@@ -417,14 +498,7 @@ class Agent:
         print("+{}+\n".format("-" * print_size))
         return 0
 
-
-    def changeItems(self,totalItemUsed, totalNewItemCollected):
-        for item in totalNewItemCollected:
-            self.items[item] =+ 1
-        for item in totalItemUsed:
-            self.items[item] =- 1
-        
-            
+                 
     def main_loop(self):
         time.sleep(1)
         action_list = ['z']
@@ -436,13 +510,10 @@ class Agent:
                     self.update_global_map()
                     self.print_small_matrix(self.view_window, self.view_size)
                     print("Item List: {}".format(self.items))
-                        
-
-
 
             if self.actionQueue.empty():
                 self.print_large_matrix(self.global_map, 160)
-                self.update_global_map_values()
+                self.update_masterGlobalMap_values()
                 print("Current Position: {}".format(self.position))
                 print("Visible: {}".format(self.visibleCoordinates))
                 print("Explored: {}".format(self.exploredCoordinates))
@@ -456,7 +527,7 @@ class Agent:
                 pathMemory = self.astar_memory[nextPosition[0]][nextPosition[1]]
                 newPath = pathMemory[0]
                 print("aStarMemory: {}".format(self.astar_memory[nextPosition[0]][nextPosition[1]]))
-                self.controller(newPath)
+                self.agentController(newPath)
                 does_nothing = self.type_to_move()
             #Use this for manual human gameplay    
             #self.TCP_Socket.send_action(action_list)
