@@ -11,6 +11,7 @@ from astar import astarItems, AstarMap
 from yens import YenMultiPath
 import copy
 
+# agent class
 class Agent:
     def __init__(self, ip_address, port_no, view_size):
         self.TCP_Socket = TCPSocketManager(ip_address, port_no, view_size)
