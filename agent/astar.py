@@ -258,7 +258,8 @@ class PathNode(Node):
     def addStonePlaced(self, stoneCoord):
         self.stoneLocations += stoneCoord
 
-        
+
+
 ############### Astar Implementations ###############
 
 def astarItems(graph, start, goal, itemsAvailable, initialRaftState, illegalEdges):
@@ -431,3 +432,148 @@ def deductItem( itemDict, item):
     
     
 
+
+def astarItemsMultiPath(graph, start, goal, itemsAvailable, initialRaftState, illegalEdges):
+    
+    #itemsAvailable = intialItems.copy()
+    #print("initial state") print(itemsAvailable)
+
+    # Fringe. Nodes not visited yet
+    openList = PriorityQueue()
+
+    # Visited Nodes. Each one will store it's parent position
+    closedList = {}
+    nodeTable = {}
+
+
+    # assign some start and goal points
+    # and push start point as a node to openList.
+    start_tuple = tuple(start)
+    goal_tuple = tuple(goal)
+    node = PathNode(start_tuple, itemsAvailable.copy())
+    node.setRaftState(initialRaftState)
+    openList.push(node)
+
+    
+    while openList:
+        
+        # if openList does not contain any node
+        # we will break.     
+        curr_node, _ = openList.pop()    
+        if not curr_node:
+            break
+        
+        position, cost = curr_node.position, curr_node.cost
+
+        if position in closedList:
+            # Oops. Already expanded.
+            continue
+
+        # Save the node in the closed list, and keep track of its parent
+        if curr_node.parent != None:
+            closedList[position] = curr_node.parent.position
+        else:   
+            closedList[position] = curr_node.position
+
+        #track of its items remainings
+        if curr_node.parent != None:
+            nodeTable[position] = curr_node.parent
+        else:   
+            nodeTable[position] = curr_node
+
+
+        
+        
+        # arrived to goal so save it as goal node.
+        if position == goal_tuple:
+            goalNode = curr_node
+            break
+            
+        # copy some parent properties
+        curr_available = curr_node.getItemAvailable()
+        raftState = curr_node.getRaftState()
+        parentStonePlace = curr_node.getStonePlaced().copy()
+
+        '''
+        print('parentStonePlace {}'.format(parentStonePlace))
+
+        if list(position) == [7,1]:
+            print("raft state for 7,1")
+            print(raftState)
+        '''
+        
+        # for each legal child for current parent,
+        for childPosition, actionCost, itemRequired, element in graph.getChildren(position, curr_available, 
+                                                                                  raftState,parentStonePlace):
+            copyStonePlaced = parentStonePlace.copy()
+            '''
+            if childPosition == [7,2]:
+                print("at least 7,2 is legal")
+            '''
+            # if illegal edges were given 
+            # and current one is illegal, ignore current child.
+            pos1 = list(position).copy()
+            pos2 = childPosition
+            if illegalEdges and ([pos1, pos2] == illegalEdges or [pos2, pos1] == illegalEdges):
+                continue
+
+            # Only add to the open list if it's not expanded yet
+            if not tuple(childPosition) in closedList:
+            
+                # copyAvailableItem               
+                copy_available_item = curr_available.copy()
+
+                # deduct from item list if it was required
+                if itemRequired:
+                    copy_available_item = deductItem(copy_available_item, itemRequired)
+
+                childRaftSate = raftState
+                
+                # updating child raftstate based on where current child is
+                # and the item required to get to the child.
+                if itemRequired == 'r':
+                    childRaftSate = 1
+                
+                elif childRaftSate == 1 and element != '~':
+                    childRaftSate = 0
+                
+                # updating the stone coordinate that was used for child.
+                # append to the parent ones.
+                stoneCoord = []
+                if itemRequired == 'o':
+                    stoneCoord = [childPosition]
+                    #print(stoneCoord)
+                    copyStonePlaced += stoneCoord       
+                
+                # creating new child node and push to the openlist
+                childNode = PathNode(tuple(childPosition), copy_available_item, cost + actionCost, curr_node, childRaftSate)
+                childNode.addStonePlaced(copyStonePlaced)
+                openList.push(childNode, childNode.cost + graph.getHCost(childPosition, goal))
+
+    
+    # intialize the returning variables
+    path = []
+    totalItemUsed = []
+    totalNewItemCollected = []
+    itemUsedState = False
+    finalItemList = itemsAvailable
+    finalRaftState = 1
+    finalStonePlace = []
+
+    # if we arrive goal, we are updating those variables.
+    if position == goal_tuple:
+        finalItemList = goalNode.getItemAvailable()    
+        itemUsedState = confirmItemUsed(finalItemList, itemsAvailable)
+        finalRaftState = goalNode.getRaftState()   
+        finalStonePlace = goalNode.getStonePlaced()     
+
+        # Ensure a path has been found
+        position_list = list(position)
+        
+        path.insert(0, position_list)
+        while position and position != start_tuple:
+            position = closedList[position]
+            position_list = list(position)
+            path.insert(0, position_list)
+
+    return [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace, nodeTable] #finalItemList, ]
