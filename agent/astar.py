@@ -514,7 +514,7 @@ def astarItemsMultiPath(graph, start, goal, itemsAvailable, initialRaftState, il
             # and current one is illegal, ignore current child.
             pos1 = list(position).copy()
             pos2 = childPosition
-            if illegalEdges and ([pos1, pos2] == illegalEdges or [pos2, pos1] == illegalEdges):
+            if illegalEdges and ([pos1, pos2] in illegalEdges or [pos2, pos1] in illegalEdges):
                 continue
 
             # Only add to the open list if it's not expanded yet
