@@ -1,29 +1,7 @@
 from astar import astarItems, AstarMap, astarItemsMultiPath
 from operator import itemgetter
 
-def globalmap_edges(self, globalmap):
-    edges = []
-    size = 160
-
-    blocks = ['T','*','-','.']
-    moves = [(0,1), (1,0),(0,-1),(-1,0)]
-
-    for i in size:
-        for y in size:
-            if globalmap[i][y] in blocks:
-                continue
-            for move in moves:
-                move_x = move[0] + i
-                move_y = move[1] + y
-                newedge = [[i,y], [move_x,move_y]]
-                reverseedge = [[move_x,move_y], [i,y]]
-
-                if move_x in range(0,size) and move_y in range(0,size)
-                    and globalmap[move_x][move_y] not in blocks and reverseedge not in edges:
-                    edges.append(newedge)
-    
-    return edges
-                    
+                   
 def converttoedges(path):
     length = len(path)
     edges = []
@@ -31,59 +9,96 @@ def converttoedges(path):
         edge = [path[i],path[i+1]]
         revedge = [path[i+1],path[i]]
         edges.append(edge)
-        edges.app[end(revedge)]
+        edges.append(revedge)
 
     return edges
 
 
 
-def YenKSP(globalmap, source, destination, itemlist, onRaft):
+def YenMultiPath(globalmap, source, destination, itemlist, onRaft):
     # Storage
-    solspace = []
+    
     Bspace = []
     illegaledges = []
     K = 10
+    solspace = []
+    Astar_Map = AstarMap(globalmap)
     #Find the shortest path using astar
     # return [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace, nodeTable]
 
-    solspace[0] = astarItemsMultiPath(globalmap, source, destination, itemlist, onRaft, illegaledges)
+    solspace.append(astarItemsMultiPath(Astar_Map, source, destination, itemlist, onRaft, illegaledges))
 
     for k in range(1,K):
-        for i in range(len(A[k - 1]) - 2):
-            spurNode = solspace[k-1][0][i]
-            rootPath = solspace[k-1][0][0:i+1]
-            spurTuple = tuple(spurNode])
-            spurItemList = solspace[k-1][5][spurTuple].getItemAvailable()
-            spurRaft = solspace[k-1][5][spurTuple].getRaftState()
+        
+        for i in reversed(range(len(solspace[-1][0])-1)):
+            
+            
 
-            for shortPath in solspace:
-                if rootPath == shortPath[0:i+1]:
-                    illegaledges.append([i+1,i+2])   
 
-            rootedges = converttoedges([rootPath[:-1]])
+            rootPath = solspace[-1][0][0:i+1]
+            
+            spurNode = solspace[-1][0][i]
+            spurTuple = tuple(spurNode)
+            spurNodes = solspace[-1][5]
+            spurItemList = solspace[-1][5][spurTuple].getItemAvailable()
+            spurRaft = solspace[-1][5][spurTuple].getRaftState()
+
+            fwdPath = solspace[-1][0][i+1:]
+            
+            illegaledges.append([spurNode,solspace[-1][0][i+1]])  
+
+            #print("before spurnodes: {}".format(spurNodes))
+            #print("spurNode {} fwdPath: {}".format(spurNode, fwdPath))
+            #for i in fwdPath:
+                #fwdTuple = tuple(i)
+                #spurNodes.pop(fwdTuple,0)
+
+            #print("after spurnodes: {}".format(spurNodes))
+
+            rootedges = converttoedges(rootPath)
             for edge in rootedges:
                 illegaledges.append(edge)
+            
 
-
-            astar_result = astarItemsMultiPath(globalmap, spurNode, destination, spurItemList, spurRaft, illegaledges)
-
+            astar_result = astarItemsMultiPath(Astar_Map, spurNode, destination, spurItemList, spurRaft, illegaledges)
+            
+            
+            #print("illegaledges: {}\n".format(illegaledges))
             if len(astar_result[0]) == 0:
                 illegaledges = []
                 continue
+            
+            if len(astar_result[0]) > 0:
+                newfwdpath = astar_result[0][1:]
+                totalPath = rootPath + newfwdpath
+                astar_result[0] = totalPath
+                astar_result[5] = {**spurNodes, **astar_result[5]}
+                
+                if astar_result not in Bspace:
+                    print("\n\n--- SolspaceCount {}, k: {} | i: {} ".format(len(solspace), k, i))
+                    print("Solspace used: {}".format(solspace[-1]))
+                    print("items at spurnode: {}".format(spurItemList))
+                    print("rootPath {}  \nspurNode {}  \nforwardPath {}".format(rootPath, spurNode, newfwdpath))
+                    print("Final path appended to Bspace: \n{}\n----".format(astar_result[0]))
+                    Bspace.append(astar_result)
 
-            totalPath = rootPath + astar_result[0]
-            astar_result[0] = totalPath
-            Bspace.append(astar_result)
             illegaledges = []
+        
         if len(Bspace) == 0:
             break
 
-        Bspace.sort() #sort by number of stones used and length of path
+        #Bspace.sort() #sort by number of stones used and length of path
         sorted(Bspace, key=itemgetter(4,0))
-        solspace[k] = B[0]
+        #print("")
+        #for i in Bspace:
+        #    print("{}".format(i))
+        #print("")
+        if Bspace[0] not in solspace:
+            print("Bspace[0] appended to solspace: {}".format(Bspace[0]))
+            solspace.append(Bspace[0])
         
         Bspace.pop()
-    #print(solspace)
+    print("source: {} destination: {} \nFinal Solspace: {}\n".format(source, destination, solspace))
     return solspace
 
 
