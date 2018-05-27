@@ -34,7 +34,6 @@ def YenMultiPath(globalmap, source, destination, itemlist, onRaft):
             
             
 
-
             rootPath = solspace[-1][0][0:i+1]
             
             spurNode = solspace[-1][0][i]
