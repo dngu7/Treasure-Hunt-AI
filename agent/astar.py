@@ -476,10 +476,7 @@ def astarItemsMultiPath(graph, start, goal, itemsAvailable, initialRaftState, il
             closedList[position] = curr_node.position
 
         #track of its items remainings
-        if curr_node.parent != None:
-            nodeTable[position] = curr_node.parent
-        else:   
-            nodeTable[position] = curr_node
+        nodeTable[position] = curr_node
 
 
         
