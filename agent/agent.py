@@ -103,9 +103,9 @@ class Agent:
         for count in range(stoneCount+1):
             items = starting_item_list.copy()
             items['o'] = count
-            
-            testRoute = astarItems(AstarMap, position, goal, items, onRaft,[])
-            
+            items['r'] = 0
+            testRoute = astarItems(AstarMap, position, goal, items, onRaft, [])
+            print('testroute {} Length: {} stonecount {} items {} onRaft {}'.format(goal, len(testRoute[0]), count, items, onRaft))
 
             if (len(testRoute[0])) > 0:
                 testRoute[2]['o'] = stoneCount - count
@@ -114,20 +114,54 @@ class Agent:
                 return testRoute
         
         return astarItems(AstarMap, position, goal, starting_item_list, onRaft, [])
+        
+    def update_global_map_values(self):
+        removecoordinates = []
+        for coordinate in self.visibleCoordinates:
+            x = coordinate[0]
+            y = coordinate[1]
+            obstacle = self.global_map[x][y]
+            reachPoints = 0
+            distancePoints = 0
+            coordPoints = 0
 
-    def update_masterGlobalMap_values(self):
-        new_values = self.calculate_globalMap_points(self.AstarMap, self.global_map, self.global_map_values, self.astar_memory, self.position, self.items, self.onRaft,0)
-        self.AstarMap = new_values[0]
-        self.global_map = new_values[1].copy()
-        self.global_map_values = new_values[2].copy()
-        self.astar_memory = new_values[3].copy()
-        self.position = new_values[4]
-        self.items = new_values[5]
-        self.onRaft = new_values[6]
-        removecoordinatesList = new_values[7]
-        map_points = new_values[8]
+            if (obstacle == '*') or (obstacle == '^') or (obstacle == '.'):
+                removecoordinates.append([x,y])
+                print('Removed: {} Reason: Wall or already went through'.format(coordinate))
+                continue
+            if obstacle == '~' and self.items['r'] < 1 and self.items['o'] < 1 and self.onLand:
+                self.global_map_values[x][y] = -10001
+                #print('Skipped water: [{} {}]'.format(x,y))
+                continue
+            
+            self.astar_memory[x][y] = self.astarMinimum(self.AstarMap,self.position, [x,y], self.items, self.onRaft)
 
-        for coordinate in removecoordinatesList: 
+            if len(self.astar_memory[x][y][0]) > 0:
+                if self.astar_memory[x][y][1]:
+                    reachPoints = 10
+                else:
+                    reachPoints = 50
+                    ## reduce points based on the distance
+                distancePoints = (len(self.astar_memory[x][y][0])) * -0.2
+                coordPoints = self.calculateCoordinatePoints([x,y])
+                self.global_map_values[x][y] = reachPoints + distancePoints + coordPoints
+                print('{},{} is worth {} points'.format(x,y, self.global_map_values[x][y]))
+                #print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0])))
+
+            else:
+                print('{},{} is not reachhable'.format(x,y))
+                self.global_map_values[x][y] = -10002
+            
+
+            if (obstacle == ' ') and coordPoints < 2.5 and reachPoints > 1:
+                print('Removed: {} Reason: not enough coordpoints ({})'.format(coordinate, coordPoints))
+                removecoordinates.append([x,y])
+                continue
+
+            print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,self.global_map[x][y],self.global_map_values[x][y],reachPoints,distancePoints,coordPoints, len(self.astar_memory[x][y][0])))
+
+        for coordinate in removecoordinates:
+            
             self.visibleCoordinates.remove(coordinate)
             self.exploredCoordinates.append(coordinate)
             self.global_map_values[coordinate[0]][coordinate[1]] = -10003
