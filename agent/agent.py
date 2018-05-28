@@ -8,7 +8,7 @@ from queue import Queue
 from rotation import rotate
 from socketmanager import TCPSocketManager
 from astar import astarItems, AstarMap
-from yens import YenMultiPath
+from yens import YenAstarMultiPath
 import copy
 
 class Agent:
@@ -37,7 +37,7 @@ class Agent:
         self.visibleCoordinates = [[78,78],[78,79],[78,80],[78,81],[78,82],[79,78],[79,79],[79,80],[79,81],[79,82],[80,78],[80,79],[80,81],[80,82],[81,78],[81,79],[81,80],[81,81],[81,82],[82,78],[82,79],[82,80],[82,81],[82,82]]
         self.exploredCoordinates = [[80,80]]
         self.winmessage = 1
-        self.deep_search_limit = 3
+        self.deep_search_limit = 6
 
 
     # this function is to print the GlobalMap with Shrinked size
@@ -105,18 +105,17 @@ class Agent:
             items['o'] = count
             
             testRoute = astarItems(AstarMap, position, goal, items, onRaft,[])
-            
 
             if (len(testRoute[0])) > 0:
                 testRoute[2]['o'] = stoneCount - count
                 if self.global_map[goal[0]][goal[1]] in self.items:
-                    print('Target {} ({}) StonesUsed {} Route Length {} astar: {}'.format(goal, self.global_map[goal[0]][goal[1]],count, len(testRoute[0]), testRoute))
+                    print('From {} Target {} ({}) StonesUsed {} Route Length {} astar: {}'.format(position, goal, self.global_map[goal[0]][goal[1]],count, len(testRoute[0]), testRoute))
                 return testRoute
         
         return astarItems(AstarMap, position, goal, starting_item_list, onRaft, [])
 
     def update_masterGlobalMap_values(self):
-        new_values = self.calculate_globalMap_points(self.AstarMap, self.global_map, self.global_map_values, self.astar_memory, self.position, self.items, self.onRaft,0)
+        new_values = self.calculate_globalMap_points(self.visibleCoordinates, self.AstarMap, self.global_map, self.global_map_values, self.astar_memory, self.position, self.items, self.onRaft,0)
         self.AstarMap = new_values[0]
         self.global_map = new_values[1].copy()
         self.global_map_values = new_values[2].copy()
@@ -132,7 +131,7 @@ class Agent:
             self.exploredCoordinates.append(coordinate)
             self.global_map_values[coordinate[0]][coordinate[1]] = -10003
 
-    def calculate_globalMap_points(self, global_AstarMap, global_map, global_map_values, astar_memory, position, items, onRaft, search_level):
+    def calculate_globalMap_points(self, visibleCoordinates, global_AstarMap, global_map, global_map_values, astar_memory, position, items, onRaft, search_level):
         removecoordinatesList = []
         
         #places a limit on deep search to prevent overload of computer processing power
@@ -141,7 +140,7 @@ class Agent:
         else:
             #Loop through all visible coordinate on the map and calculate points for each coordinate
             #Add up values of all coordinates that have value > 0
-            for coordinate in self.visibleCoordinates:
+            for coordinate in visibleCoordinates:
                 x, y = coordinate[0], coordinate[1]
                 
                 obstacle = global_map[x][y]
@@ -170,34 +169,45 @@ class Agent:
                     temp_global_map_values = copy.deepcopy(global_map_values)
                     temp_astar_memory = copy.deepcopy(astar_memory)
                     print("\n\n ** DEEP SEARCH STARTING FOR {} ({}) from {} Layer {}\n\n".format(coordinate, obstacle, position, search_level))
-                    multiStarRoutes = YenMultiPath(temp_globalmap, position, [x,y], items, onRaft)
+                    aStarMultiPath_storage = YenAstarMultiPath(temp_globalmap, position, [x,y], items, onRaft)
                     max_points = 0
-                    best_route = []
 
                     #Update maps for all multipleRoutes
-                    for aStarRoute in multiStarRoutes:
+                    for aStarRoute in aStarMultiPath_storage:
+                        temp_visibleCoordinates = visibleCoordinates.copy() #visisble coordinates are new... 
                         temp_global_points = 0
                         new_items = aStarRoute[2]
                         new_raftstate = aStarRoute[3]
-                        stone_locations = aStarRoute[4]
+                        new_stone_locations = aStarRoute[4]
+                        
+                        for pathcoordinate in aStarRoute[0]:
+                            if pathcoordinate in temp_visibleCoordinates:
+                                temp_visibleCoordinates.remove(pathcoordinate)
 
-                        print("Updating a temp map with stones {}".format(stone_locations))
-                        for location in stone_locations:
+                        print("TESTING potential route ({}) {}".format(coordinate, aStarRoute[0]))
+                        print("before: global map without stones")
+                        self.print_large_matrix(temp_globalmap, 160)
+                        for location in new_stone_locations:
                             temp_globalmap[location[0]][location[1]] = ' '
+                        print("after: global map with stones {}".format(new_stone_locations))
+                        self.print_large_matrix(temp_globalmap, 160)
 
                         temp_AstarMap = AstarMap(temp_globalmap)
-                        
-                        return_list = self.calculate_globalMap_points(temp_AstarMap, temp_globalmap, temp_global_map_values, temp_astar_memory, [x,y], new_items, new_raftstate, search_level + 1)
-                        temp_global_points = return_list[8]
+                        print("Starting next layer search for {} ({}) to determine global points".format(coordinate, obstacle))
+                        return_list = self.calculate_globalMap_points(temp_visibleCoordinates, temp_AstarMap, temp_globalmap, temp_global_map_values, temp_astar_memory, [x,y], new_items, new_raftstate, search_level + 1)
+                        temp_global_points += return_list[8]
+                        print("Total global points ({}): {}".format(coordinate, temp_global_points))
+
                         if temp_global_points > max_points:
                             max_points = temp_global_points
-                            best_route = copy.deepcopy(aStarRoute)
-                            print("\Better Path Found ({}) {} : {}\n".format(coordinate, temp_global_points, aStarRoute))
-                        print("\nCurrent Path Points {} : {}\n".format(temp_global_points, aStarRoute[0]))
-                        print("items after: {}".format(aStarRoute[2]))
-                    print("\n\n ** DEEP SEARCH ENDING FOR {} ({}) from {} Layer {}\n\n".format(coordinate, obstacle, position, search_level))
-                    print("Selected route for {} ({}) : {}".format(coordinate,obstacle, best_route))
-                    astar_memory[x][y] = copy.deepcopy(best_route)
+                            astar_memory[x][y] = copy.deepcopy(aStarRoute)
+                            print("++BETTER Path Found ({}) {} : {}".format(coordinate, temp_global_points, aStarRoute))
+                        else:
+                            print("--Worse Path Path Found {} : {}".format(temp_global_points, aStarRoute[0]))
+                        print("Items after path finished: {}\n".format(aStarRoute[2]))
+                    print("\n\n ** DEEP SEARCH ENDING FOR {} ({}) from {} Layer {}".format(coordinate, obstacle, position, search_level))
+                    print("Selected route for {} ({}) from {}: {}\n\n".format(coordinate,obstacle, position, astar_memory[x][y]))
+                    
 
                 else:
                     astar_memory[x][y] = temp_astar_memory.copy()
@@ -210,6 +220,7 @@ class Agent:
                     print('({},{}) ({}): pts = {}  reach = {}  dist = {}  coord = {} pathlength = {}'.format(x,y,obstacle,totalPoints,reachPoints,distancePoints,coordPoints, len(astar_memory[x][y][0])))
 
             totalMapPoints = self.calculate_TotalMapPoints(global_map_values, removecoordinatesList)
+            print("totalMapPoints FOR position {}: {}\n\n".format(position, totalMapPoints))
 
             return [global_AstarMap, global_map, global_map_values, astar_memory, position, items, onRaft, removecoordinatesList, totalMapPoints]
             
@@ -218,12 +229,15 @@ class Agent:
                     
     def calculate_TotalMapPoints(self, global_map_values, removecoordinatesList):
         totalMapPoints = 0
+        print("\n--Calculating Map Points--")
         for coordinate in self.visibleCoordinates:
             if coordinate not in removecoordinatesList:
                 x, y = coordinate[0], coordinate[1]
                 points = global_map_values[x][y]
                 if points > 0:
                     totalMapPoints += points
+                    print("{} ({}): +{}".format(coordinate, self.global_map[coordinate[0]][coordinate[1]],points))
+        print("--Final Map Points = {}--\n".format(totalMapPoints))
         return totalMapPoints
 
 
@@ -259,19 +273,19 @@ class Agent:
             if onRaft:
                 return 15
             else:
-                return 100
+                return 15
 
         elif obstacle in ['T','-']: # returns 10 pts if agent contains pre-req to collect new items
             if obstacle == 'T' and self.items['a'] > 0:
                 if onRaft:
-                    return 200
+                    return 15
                 else:
-                    return 90
+                    return 15
             elif obstacle == '-' and self.items['k'] > 0:
                 if onRaft:         # the agent prioritizes obtaining another raft over opening doors
-                    return 30
+                    return 15
                 else:
-                    return 100
+                    return 15
             else:
                 return 0
 
@@ -289,6 +303,8 @@ class Agent:
                                 points += 0.1
                             else:
                                 points += 0.5
+                        if surrounding_obstacle == '~':
+                            points += 0.2
             return points
             #possible to shorten this... keep like this until confirmed
 

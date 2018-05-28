@@ -1,5 +1,6 @@
 from astar import astarItems, AstarMap, astarItemsMultiPath
 from operator import itemgetter
+import heapq
 
                    
 def converttoedges(path):
@@ -13,92 +14,88 @@ def converttoedges(path):
 
     return edges
 
-
-
-def YenMultiPath(globalmap, source, destination, itemlist, onRaft):
-    # Storage
-    
-    Bspace = []
-    illegaledges = []
-    K = 10
-    solspace = []
-    Astar_Map = AstarMap(globalmap)
-    #Find the shortest path using astar
+def YenAstarMultiPath(globalmap, source, destination, itemlist, onRaft):
     # return [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace, nodeTable]
 
-    solspace.append(astarItemsMultiPath(Astar_Map, source, destination, itemlist, onRaft, illegaledges))
+    Astar_Map = AstarMap(globalmap)
+    #Find the shortest path using astar
+    testPaths = []
+    illegaledges = []
+    visitededges = {}
+    exploredPaths = {}
+    pathSpace = []
+    astarpath = astarItemsMultiPath(Astar_Map, source, destination, itemlist, onRaft, illegaledges)
+    heapq.heappush(testPaths,(1,astarpath))
+    exploredPaths[str(astarpath[4])] = astarpath
+    obstacle = globalmap[destination[0]][destination[1]]
 
-    for k in range(1,K):
-        
-        for i in reversed(range(len(solspace[-1][0])-1)):
-            
-            
+    while testPaths:
+        cost, current_path = heapq.heappop(testPaths)
+        stoneCombination = current_path[4]
 
-            rootPath = solspace[-1][0][0:i+1]
-            
-            spurNode = solspace[-1][0][i]
+        for i in range(len(current_path[0])-1):
+            rootPath = current_path[0][0:i+1]
+            spurNode = current_path[0][i]
             spurTuple = tuple(spurNode)
-            spurNodes = solspace[-1][5]
-            spurItemList = solspace[-1][5][spurTuple].getItemAvailable()
-            spurRaft = solspace[-1][5][spurTuple].getRaftState()
+            spurNodes = current_path[5]
+            spurItemList = current_path[5][spurTuple].getItemAvailable()
+            spurRaft = current_path[5][spurTuple].getRaftState()
+            spurStoneCombo = current_path[5][spurTuple].getStonePlaced()
+            fwdPath = current_path[0][i+1:]
+            illegaledges = []
 
-            fwdPath = solspace[-1][0][i+1:]
-            
-            illegaledges.append([spurNode,solspace[-1][0][i+1]])  
+            visitededges.setdefault(str(spurNode),[]).append(current_path[0][i+1])
+            visitededges.setdefault(str(current_path[0][i+1]),[]).append(spurNode)
 
-            #print("before spurnodes: {}".format(spurNodes))
-            #print("spurNode {} fwdPath: {}".format(spurNode, fwdPath))
-            #for i in fwdPath:
-                #fwdTuple = tuple(i)
-                #spurNodes.pop(fwdTuple,0)
-
-            #print("after spurnodes: {}".format(spurNodes))
+            #limits number of branches to 3 best paths from spurnode
+            if len(visitededges[str(spurNode)]) > 4:
+                continue
 
             rootedges = converttoedges(rootPath)
             for edge in rootedges:
                 illegaledges.append(edge)
-            
 
+            for edge in visitededges[str(spurNode)]:
+                illegaledges.append([spurNode, edge])
+            
             astar_result = astarItemsMultiPath(Astar_Map, spurNode, destination, spurItemList, spurRaft, illegaledges)
-            
-            
-            #print("illegaledges: {}\n".format(illegaledges))
+
+            newfwdpath = astar_result[0][1:]
+            totalPath = rootPath + newfwdpath
+            newStoneCombo = astar_result[4]
+            totalStoneCombo = spurStoneCombo + newStoneCombo
+
             if len(astar_result[0]) == 0:
-                illegaledges = []
                 continue
-            
-            if len(astar_result[0]) > 0:
-                newfwdpath = astar_result[0][1:]
-                totalPath = rootPath + newfwdpath
+            else:
+                #print("\n---\nCurrPath derived: {}".format(current_path[0]))
                 astar_result[0] = totalPath
                 astar_result[5] = {**spurNodes, **astar_result[5]}
-                
-                if astar_result not in Bspace:
-                    print("\n\n--- SolspaceCount {}, k: {} | i: {} ".format(len(solspace), k, i))
-                    print("Solspace used: {}".format(solspace[-1]))
-                    print("items at spurnode: {}".format(spurItemList))
-                    print("rootPath {}  \nspurNode {}  \nforwardPath {}".format(rootPath, spurNode, newfwdpath))
-                    print("Final path appended to Bspace: \n{}\n----".format(astar_result[0]))
-                    Bspace.append(astar_result)
+                #print("stonecombo: {}".format(totalStoneCombo))
+                #print("rootPath {}  \nspurNode {}  \nitems at spurnode {}\nnewforwardPath {}".format(rootPath, spurNode, spurItemList, newfwdpath))
+                #print("Current SpurNode Expansions: {}".format(visitededges[str(spurNode)]))
+                #print("illegaledges: {}".format(illegaledges))
+                if totalPath not in pathSpace:
+                    pathSpace.append(totalPath)
+                    if (str(totalStoneCombo) not in exploredPaths) or (str(totalStoneCombo) in exploredPaths) and (len(exploredPaths[str(totalStoneCombo)][0]) > len(totalPath)):
+                        #print("** Path added to exploredpath: \n{}\n----".format(totalPath))
+                        exploredPaths[str(totalStoneCombo)] = astar_result
+                        heapq.heappush(testPaths, (len(totalPath) * 0.1 + len(astar_result[4]) * 10, astar_result))
+                    else:
+                        heapq.heappush(testPaths, (len(totalPath) * 0.1 + len(astar_result[4]) * 10, astar_result))
+                    
+                            
 
-            illegaledges = []
+    print("\n\nEXPLORED PATHS SENT")
+    finalpathlist = []
+    for stonecombo in exploredPaths:
+        if obstacle == 'o':
+            exploredPaths[stonecombo][2]['o'] += 1
+        finalpathlist.append(exploredPaths[stonecombo])
+        print("Stones {} finalItems {} | Path {}".format(stonecombo, exploredPaths[stonecombo][2], exploredPaths[stonecombo]))
         
-        if len(Bspace) == 0:
-            break
 
-        #Bspace.sort() #sort by number of stones used and length of path
-        sorted(Bspace, key=itemgetter(4,0))
-        #print("")
-        #for i in Bspace:
-        #    print("{}".format(i))
-        #print("")
-        if Bspace[0] not in solspace:
-            print("Bspace[0] appended to solspace: {}".format(Bspace[0]))
-            solspace.append(Bspace[0])
-        
-        Bspace.pop()
-    print("source: {} destination: {} \nFinal Solspace: {}\n".format(source, destination, solspace))
-    return solspace
+    return finalpathlist
 
 
 
