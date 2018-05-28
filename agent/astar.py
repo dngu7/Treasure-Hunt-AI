@@ -479,7 +479,6 @@ def astarItemsMultiPath(graph, start, goal, itemsAvailable, initialRaftState, il
         nodeTable[position] = curr_node
 
 
-
         
         
         # arrived to goal so save it as goal node.
