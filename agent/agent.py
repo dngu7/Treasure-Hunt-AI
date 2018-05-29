@@ -45,18 +45,21 @@ class Agent:
         self.deep_search_limit = 6
         self.update_global_values_flag = 0
 
-    def checkDeepMapValues(self, goal, visibleItems, stoneLocation, currentItems):
-        x = goal[0]
-        y = goal[1]
+    def checkDeepMapValues(self, start, goal, visibleItems, stoneLocation, currentItems):
+        x = start[0]
+        y = start[1]
+
+        goal = str(goal)
         visibleItems = str(visibleItems)
         stoneLocation = str(stoneLocation)
         currentItems = str(currentItems)
 
-        if visibleItems in self.deep_global_map_values[x][y]:
-            if stoneLocation in self.deep_global_map_values[x][y][visibleItems]:
-                if currentItems in self.deep_global_map_values[x][y][visibleItems][stoneLocation]:
-                    deepMapValue = self.deep_global_map_values[x][y][visibleItems][stoneLocation][currentItems]
-                    return deepMapValue
+        if goal in self.deep_global_map_values[x][y]:
+            if visibleItems in self.deep_global_map_values[x][y][goal]:
+                if stoneLocation in self.deep_global_map_values[x][y][goal][visibleItems]:
+                    if currentItems in self.deep_global_map_values[x][y][goal][visibleItems][stoneLocation]:
+                        deepMapValue = self.deep_global_map_values[x][y][goal][visibleItems][stoneLocation][currentItems]
+                        return deepMapValue
         
         return 0
             
