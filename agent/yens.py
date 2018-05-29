@@ -29,6 +29,7 @@ def YenAstarMultiPath(globalmap, source, destination, itemlist, onRaft):
     exploredPaths[str(astarpath[4])] = astarpath
     obstacle = globalmap[destination[0]][destination[1]]
 
+
     while testPaths:
         cost, current_path = heapq.heappop(testPaths)
         stoneCombination = current_path[4]
@@ -48,7 +49,7 @@ def YenAstarMultiPath(globalmap, source, destination, itemlist, onRaft):
             visitededges.setdefault(str(current_path[0][i+1]),[]).append(spurNode)
 
             #limits number of branches to 3 best paths from spurnode
-            if len(visitededges[str(spurNode)]) > 4:
+            if len(visitededges[str(spurNode)]) > 3:
                 continue
 
             rootedges = converttoedges(rootPath)
@@ -88,11 +89,14 @@ def YenAstarMultiPath(globalmap, source, destination, itemlist, onRaft):
 
     print("\n\nEXPLORED PATHS SENT")
     finalpathlist = []
+    leaststonesused = min(len(i) for i in exploredPaths)
+
     for stonecombo in exploredPaths:
-        if obstacle == 'o':
-            exploredPaths[stonecombo][2]['o'] += 1
-        finalpathlist.append(exploredPaths[stonecombo])
-        print("Stones {} finalItems {} | Path {}".format(stonecombo, exploredPaths[stonecombo][2], exploredPaths[stonecombo]))
+        if len(stonecombo) == leaststonesused:
+            if obstacle == 'o':
+                exploredPaths[stonecombo][2]['o'] += 1
+            finalpathlist.append(exploredPaths[stonecombo])
+            print("Stone Used {} finalItems {} | Path {}".format(stonecombo, exploredPaths[stonecombo][2], exploredPaths[stonecombo][0]))
         
 
     return finalpathlist

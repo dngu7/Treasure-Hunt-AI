@@ -32,12 +32,16 @@ class TCPSocketManager:
     def recv_map(self):
         map_data = self.recv_data()
         k = 0
+        
         if map_data != '':
             for i in range(self.view_size):
                 for j in range(self.view_size):
                     if not ((i == 2) and (j == 2)):
-                        self.view_window[i][j] = map_data[k]
-                        k += 1
+                        try:
+                            self.view_window[i][j] = map_data[k]
+                            k += 1
+                        except IndexError:
+                            pass
             return self.view_window 
         return map_data   
 
