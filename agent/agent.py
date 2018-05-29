@@ -21,6 +21,7 @@ class Agent:
         self.global_map_size = 160
         self.global_map = [['?'] * self.global_map_size for i in range(self.global_map_size)]
         self.global_map_values = [[0] * self.global_map_size for i in range(self.global_map_size)]
+        self.deep_global_map_values = [[{}] * self.global_map_size for i in range(self.global_map_size)]
         self.global_map_distance = [[0] * self.global_map_size for i in range(self.global_map_size)]
         self.astar_memory = [[[],[],[]] * self.global_map_size for i in range(self.global_map_size)]
         self.items = {'k' : 0, 'o' : 0, 'a' : 0, 'r' : 0, '$' : 0}
@@ -44,14 +45,37 @@ class Agent:
         self.deep_search_limit = 6
         self.update_global_values_flag = 0
 
+    def checkDeepMapValues(self, goal, visibleItems, stoneLocation, currentItems):
+        x = goal[0]
+        y = goal[1]
+        visibleItems = str(visibleItems)
+        stoneLocation = str(stoneLocation)
+        currentItems = str(currentItems)
 
-    # this function is to print the GlobalMap with Shrinked size
-    # so it is easeir to debug
-    def printMinimizedGlobalMap(self):
+        if visibleItems in self.deep_global_map_values[x][y]:
+            if stoneLocation in self.deep_global_map_values[x][y][visibleItems]:
+                if currentItems in self.deep_global_map_values[x][y][visibleItems][stoneLocation]:
+                    deepMapValue = self.deep_global_map_values[x][y][visibleItems][stoneLocation][currentItems]
+                    return deepMapValue
         
-        colEdge = self.colEdge
-        rowEdge = self.rowEdge
+        return 0
+            
+    def addDeepMapValues(self, goal, visibleItems, stoneLocation, currentItems, deepMapValue):
+        x = goal[0]
+        y = goal[1]
+        visibleItems = str(visibleItems)
+        stoneLocation = str(stoneLocation)
+        currentItems = str(currentItems)
 
+        if visibleItems not in self.deep_global_map_values[x][y]:
+            self.deep_global_map_values[x][y][visibleItems] = {}
+        
+        if stoneLocation not in self.deep_global_map_values[x][y][visibleItems]:
+            self.deep_global_map_values[x][y][visibleItems][stoneLocation] = {}
+            
+        self.deep_global_map_values[x][y][visibleItems][stoneLocation][currentItems] = deepMapValue
+                
+                
 
     def decideNextPosition(self):
         nextPosition = [80,80]
@@ -78,7 +102,7 @@ class Agent:
         print("Trip to ($) | Starting  items: {}".format(self.items))
         firsttripresult = self.astarMinimum(self.AstarGlobalMap,startingpoint, treasurepoint, self.items, self.onRaft)
         print("First Trip to $: {}".format(firsttripresult))
-        temp_globalmap_2 = self.global_map
+        temp_globalmap_2 = copy.deepcopy(self.global_map)
         stonelocations = firsttripresult[4]
         remaining_items = firsttripresult[2]
         print('Stones used for first trip($). StoneLocations: {}'.format(stonelocations))
@@ -167,7 +191,7 @@ class Agent:
         starting_visibleItems = self.visibleItems.copy()
         max_points = 0
 
-        for someRoute in aStarMultiPath_List:
+        for routeNb, someRoute in enumerate(aStarMultiPath_List):
             temp_globalmap = copy.deepcopy(starting_globalmap)
             temp_visibleItems = starting_visibleItems.copy()
             temp_visibleItems.remove(goal)
@@ -177,25 +201,38 @@ class Agent:
             new_raftstate = someRoute[3]
             new_stone_locations = someRoute[4]
 
-            for i in new_stone_locations:
-                temp_globalmap[i[0]][i[1]] = ' '
+            globalMapPoints = self.checkDeepMapValues(goal, temp_visibleItems, new_stone_locations, new_items)
 
+            if globalMapPoints == 0:
+                for i in new_stone_locations:
+                    temp_globalmap[i[0]][i[1]] = ' '
 
-            temp_AstarMap = AstarMap(temp_globalmap)
+                #only for debuging
+                str_visibleItems = str(temp_visibleItems)
+                str_stoneLocation = str(new_stone_locations)
+                str_currentItems = str(self.items)
+                
 
-            
-            globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, temp_visibleItems, goal, new_items, new_raftstate, search_level)
-
-            print("0 Start {} | Goal {} ({})| Potential Path {}".format(self.position, goal, self.global_map[goal[0]][goal[1]], someRoute[0]))
-            print("0 Start {} | Goal {} ({})| Potential Map Points {}".format(self.position, goal, self.global_map[goal[0]][goal[1]], globalMapPoints))
-                    
+                temp_AstarMap = AstarMap(temp_globalmap)
+                print("!0 r{} Start {} | Goal {} ({})| Potential Path {}".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]], someRoute[0]))
+                print("!0 r{} Start {} | Goal {} ({})| CALCULATING Global Values... \n".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]]))
+                globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, temp_visibleItems, goal, new_items, new_raftstate, search_level)
+                self.addDeepMapValues(goal, temp_visibleItems, new_stone_locations, self.items, globalMapPoints)
+                print("!0 r{} Start {} | Goal {} ({})| globalMapPointsSaved {}".format(search_level, routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]], self.deep_global_map_values[goal[0]][goal[1]][str_visibleItems][str_stoneLocation][str_currentItems]))
+                print("globalMapPointsSaved Entire {}".format(self.deep_global_map_values[goal[0]][goal[1]])) 
+                print("\n!0 r{} Start {} | Goal {} ({})| FINISHED Global Values".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]]))
+                print("!0 r{} Start {} | Goal {} ({})| Map Points {}".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]], globalMapPoints))
+                print("!0 r{} Start {} | Goal {} ({})| Finishing items {}".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]], someRoute[2]))                    
             if globalMapPoints > max_points:
                 max_points = globalMapPoints
                 bestRoute = someRoute[0].copy()
                 bestRouteStones = new_stone_locations.copy()
-                print("0 Start {} | Goal {} ({})| New Best Path {}".format(self.position, goal, self.global_map[goal[0]][goal[1]], bestRoute))
-                print("0 Start {} | Goal {} ({})| Stones Used {}".format(self.position, goal, self.global_map[goal[0]][goal[1]], bestRouteStones))
-                print("0 Start {} | Goal {} ({})| New Best Points {}\n".format(self.position, goal, self.global_map[goal[0]][goal[1]], max_points))
+                bestStartingItems = new_items.copy()
+                if max_points > 99999:
+                    break
+                print("!0 r{} Start {} | Goal {} ({})| New Best Path {}".format(routeNb, self.position, goal, self.global_map[goal[0]][goal[1]], bestRoute))
+                print("!0 r{} Start {} | Goal {} ({})| Stones Used {}".format(routeNb, self.position, goal, self.global_map[goal[0]][goal[1]], bestRouteStones))
+                print("!0 r{} Start {} | Goal {} ({})| New Best Points {}\n".format(routeNb, self.position, goal, self.global_map[goal[0]][goal[1]], max_points))
 
         return bestRoute
 
@@ -205,20 +242,25 @@ class Agent:
         if search_level > self.deep_search_limit:
             return 0
         # Loop through visible coordinates
+        bestGlobalMap = copy.deepcopy(globalmap)
+        bestRouteStones = []
+        bestRoute = []
+        bestStartingItems = items.copy()
+        best_astar_path = []
+
         
         print("\n{} Start {} ({}) | visibleItems {}".format(search_level, start, globalmap[start[0]][start[1]], visibleItems))
         for goal in visibleItems:
-            best_astar_path = self.astarMinimum(DS_AstarMap, start, goal, items, raftstate)
-            bestRouteStones = best_astar_path[4]
-            bestRoute = best_astar_path[0]
+            curr_astar_path = self.astarMinimum(DS_AstarMap, start, goal, items, raftstate)
+            currRouteStones = curr_astar_path[4]
+            currRoute = curr_astar_path[0]
+            
             max_points = 0
             obstacle = globalmap[goal[0]][goal[1]]
             
+            if (obstacle in self.items and len(currRouteStones) > 0) or (obstacle == 'o' and len(currRoute) > 0): #if stones are used then ai needs to begin planning by generating multiple options with YenAstarMultiPath
 
-
-            if (obstacle in self.items and len(bestRouteStones) > 0) or (obstacle == 'o' and len(bestRoute) > 0): #if stones are used then ai needs to begin planning by generating multiple options with YenAstarMultiPath
-
-                print("\n{} Start {} | Goal {} ({})| Original Path {}".format(search_level, start, goal, globalmap[goal[0]][goal[1]], best_astar_path[0]))
+                print("\n{} Start {} | Goal {} ({})| Original Path {}".format(search_level, start, goal, globalmap[goal[0]][goal[1]], curr_astar_path[0]))
                 print("{} Start {} | Goal {} ({})| Stones Required {}".format(search_level, start, goal, globalmap[goal[0]][goal[1]], bestRouteStones))
 
                 aStarMultiPath_List = YenAstarMultiPath(globalmap, start, goal, items, raftstate)
@@ -226,9 +268,11 @@ class Agent:
                 starting_visibleItems = visibleItems.copy()
                 
 
-                for someRoute in aStarMultiPath_List:
+                for routeNb, someRoute in enumerate(aStarMultiPath_List):
                     temp_globalmap = copy.deepcopy(starting_globalmap)
                     temp_visibleItems = starting_visibleItems.copy()
+                    globalMapPoints = 0
+
                     if goal in starting_visibleItems:
                         starting_visibleItems.remove(goal)
                     search_level = 0
@@ -237,34 +281,56 @@ class Agent:
                     new_raftstate = someRoute[3]
                     new_stone_locations = someRoute[4]
 
-                    for i in new_stone_locations:
-                        temp_globalmap[i[0]][i[1]] = ' '
+                    #only for debuging
+                    str_visibleItems = str(temp_visibleItems)
+                    str_stoneLocation = str(new_stone_locations)
+                    str_currentItems = str(items)
 
+                    globalMapPoints = self.checkDeepMapValues(goal, temp_visibleItems, new_stone_locations, new_items)
 
-                    temp_AstarMap = AstarMap(temp_globalmap)
+                        
+                    if globalMapPoints == 0:
+                        for i in new_stone_locations:
+                            temp_globalmap[i[0]][i[1]] = ' '
 
-                    globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, starting_visibleItems, goal, new_items, new_raftstate, search_level)                 
-                    print("{} Start {} | Goal {} ({})| Potential Path {}".format(search_level, start, goal, temp_globalmap[goal[0]][goal[1]], someRoute[0]))
-                    print("{} Start {} | Goal {} ({})| Map Points {}".format(search_level, start, goal, temp_globalmap[goal[0]][goal[1]], globalMapPoints))
-                    print("{} Start {} | Goal {} ({})| Finishing items {}".format(search_level, start, goal, temp_globalmap[goal[0]][goal[1]], someRoute[2]))
+                        temp_AstarMap = AstarMap(temp_globalmap)
+                        print("{} r{} Start {} | Goal {} ({})| Potential Path {}".format(search_level, routeNb, start, goal, temp_globalmap[goal[0]][goal[1]], someRoute[0]))
+                        print("{} r{} Start {} | Goal {} ({})| CALCULATING Global Values... \n".format(search_level, routeNb, start, goal, temp_globalmap[goal[0]][goal[1]]))
+                        globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, starting_visibleItems, goal, new_items, new_raftstate, search_level)                 
+                        self.addDeepMapValues(goal, temp_visibleItems , new_stone_locations, items, globalMapPoints)
+                        print("{} r{} Start {} | Goal {} ({})| globalMapPointsSaved {}".format(search_level, routeNb, start, goal, temp_globalmap[goal[0]][goal[1]], self.deep_global_map_values[goal[0]][goal[1]][str_visibleItems][str_stoneLocation][str_currentItems]))
+                        print("globalMapPointsSaved Entire {}".format(self.deep_global_map_values[goal[0]][goal[1]]))                        
+                        print("\n{} r{} Start {} | Goal {} ({})| FINISHED Global Values".format(search_level, routeNb, start, goal, temp_globalmap[goal[0]][goal[1]]))
+                        print("{} r{} Start {} | Goal {} ({})| Map Points {}".format(search_level, routeNb, start, goal, temp_globalmap[goal[0]][goal[1]], globalMapPoints))
+                        print("{} r{} Start {} | Goal {} ({})| Finishing items {}".format(search_level, routeNb, start, goal, temp_globalmap[goal[0]][goal[1]], someRoute[2]))
+                    
+                    else:
+                        print("{} r{} Start {} | Goal {} ({})| globalMapPointsFound  {}".format(search_level, routeNb, start, goal, temp_globalmap[goal[0]][goal[1]], self.deep_global_map_values[goal[0]][goal[1]][str_visibleItems][str_stoneLocation][str_currentItems]))
+                        print("globalMapPointsFound Entire {}".format(self.deep_global_map_values[goal[0]][goal[1]]))
+
 
                     if globalMapPoints > max_points:
                         max_points = globalMapPoints
                         best_astar_path = someRoute.copy()
                         bestRoute = someRoute[0].copy()
                         bestRouteStones = new_stone_locations.copy()
-                        print("{} Start {} | Goal {} ({})| Best Path {}".format(search_level, start, goal, globalmap[goal[0]][goal[1]], bestRoute))
-                        print("{} Start {} | Goal {} ({})| Stones Used {}".format(search_level, start, goal, globalmap[goal[0]][goal[1]], bestRouteStones))
-                        print("{} Start {} | Goal {} ({})| Best Points {}\n".format(search_level, start, goal, globalmap[goal[0]][goal[1]], max_points))
+                        bestGlobalMap = copy.deepcopy(temp_globalmap)
+                        
+                        print("{} r{} Start {} | Goal {} ({})| Best Path {}".format(search_level, routeNb, start, goal, globalmap[goal[0]][goal[1]], bestRoute))
+                        print("{} r{} Start {} | Goal {} ({})| Stones Used {}".format(search_level, routeNb, start, goal, globalmap[goal[0]][goal[1]], bestRouteStones))
+                        print("{} r{} Start {} | Goal {} ({})| Best Points {}\n".format(search_level, routeNb, start, goal, globalmap[goal[0]][goal[1]], max_points))
 
-                if len(bestRoute) > 0:
-                    if obstacle == '$':
-                        print("Final run Item: {}".format(best_astar_path[2]))
-                        homesearch = self.astarMinimum(DS_AstarMap, goal, [80,80], best_astar_path[2], 0)
-                        if len(homesearch[0]) > 0:
-                            print("Found Path to Treasure and Home.")
-                            return 10000000000000
-                    current_globalMapPoints += max_points + self.visibleItemsPts[obstacle]
+            if len(bestRoute) > 0:
+                
+                if obstacle == '$':
+                    print("Final Run Item: {}".format(best_astar_path[2]))
+                    temp_DS_map = (AstarMap(bestGlobalMap))
+                    homesearch = self.astarMinimum(temp_DS_map, goal, [80,80], best_astar_path[2], 0)
+                    if len(homesearch[0]) > 0:
+                        print("Found Path to Treasure and Home.")
+                        return 10000000000000
+                current_globalMapPoints += max_points + self.visibleItemsPts[obstacle]
+                
 
         return current_globalMapPoints    
 
@@ -746,15 +812,18 @@ class Agent:
 
                 print("Current Position: {}".format(self.position))
                 print("Visible: {}".format(self.visibleCoordinates))
-                
                 print("Explored: {}".format(self.exploredCoordinates))
                 print("Item List: {}".format(self.items))
                 print("\nVisibleitems: ")
                 for i in self.visibleItems:
                     print("{} ({}) ({})".format(i, self.global_map[i[0]][i[1]], self.global_map_values[i[0]][i[1]]))
+                    print("{} ({}) ({})".format(i, self.global_map[i[0]][i[1]], self.deep_global_map_values[i[0]][i[1]]))                    
 
                 nextPosition = self.decideNextPosition()
                 bestRoute = self.decideBestRoute(nextPosition)
+
+                
+
                 print("\nNext Position Chosen: {} ({}) ({})".format(nextPosition, self.global_map[nextPosition[0]][nextPosition[1]], self.global_map_values[nextPosition[0]][nextPosition[1]]))
                 print("onLand: {} onRaft: {}".format(self.onLand, self.onRaft))
 
