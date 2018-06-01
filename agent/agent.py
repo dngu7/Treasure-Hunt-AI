@@ -1,10 +1,9 @@
-#           Sample Agent for Text-Based Adventure Game      #
-#           Implemented in Python3.6                        #
+
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 #  Agent Description Summary                                                                                                                        #
 #  The agent uses the following algorithms and AI techniques to find the treasure and return home.                                                  #
-
+#   
 #  Name                                      Description
 #  1. Top Global Map Memory                  > Stores local map  into global map
 #  2. Object Point System                    > Calculates points for each obstacle on the global map to decide next move.  
@@ -16,9 +15,23 @@
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
-#  Agent Description Detailed                                                                                                                        #
+#  Agent Design: 
 # 
-# As the agent moves around the map, it carries out four main loop functions. The first one is storing what it receives in the Top Global Memory Map 
+# A. Core Loop (Global Map Memory and Point System)                                                                                                                         #
+#                               
+# When the agent starts, it begins the main loop function which carries out four important steps. The agent stores the map received from the game
+# in a large 160x160 global map (global_map_obstacles) using the update_global_map() function. Next, each coordinate in the map is assigned points 
+# based on a system which prioritizes exploration of land/water and picking up items depending on 3 factors: Reachability, Item Value and Distance. 
+# These points are calculated after every move (using the calculateTotalCoordPoints function) and is saved in the top_global_map_points. 
+# The agent uses these points to determine which position should be taken on the next move with the decideNextPosition() function.
+# 
+# B. Path Search (A-Star and Yen-Astar Multiple Path Search
+#
+# The coordinate with the highest points is chosen and a path is generated using the A-Star Heuistic function stored in the astar.py file
+# (Yooshin add lines hhere)
+#
+# If the A-Star returns a path that requires the use of stones or the next position is an item, then agent uses our Yen-Astar multiple pathh search
+# to create multiple paths 
 
 
 import sys
