@@ -69,7 +69,10 @@ from socketmanager import TCPSocketManager
 from astar import astarItems, AstarMap, manhattan
 from yens import YenAstarMultiPath
 
-
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# Agent Class Object
+# Contains functions required to find the treasure and return home                                                                              
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
 class Agent:
     def __init__(self, ip_address, port_no, view_size):
         self.TCP_Socket = TCPSocketManager(ip_address, port_no, view_size)
@@ -99,7 +102,10 @@ class Agent:
         self.update_global_values_flag = 0
         self.theFinalPath = []
 
-
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# checkDeepMapValues
+# This function checks if future global map state points have already been calculated and saved in self.deep_global_map_points 
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
     def checkDeepMapValues(self, start, goal, stoneLocation, currentItems):
         x = start[0]
         y = start[1]
@@ -114,7 +120,11 @@ class Agent:
                     deepMapValue = self.deep_global_map_points[x][y][goal][stoneLocation][currentItems]
                     return deepMapValue
         return 0
-            
+
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# addDeepMapValues
+# This function adds future global map state points to self.deep_global_map_points in order to avoid repeitive calculations. 
+#---------------------------------------------------------------------------------------------------------------------------------------------------#           
     def addDeepMapValues(self, start, goal, stoneLocation, currentItems, deepMapValue):
         x = start[0]
         y = start[1]
@@ -130,55 +140,62 @@ class Agent:
         if stoneLocation not in self.deep_global_map_points[x][y][goal]:
             self.deep_global_map_points[x][y][goal][stoneLocation] = {}
         self.deep_global_map_points[x][y][goal][stoneLocation][currentItems] = deepMapValue
-                
+
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# decideNextPosition
+# This function returns the next position for the agent by finding visible coordinate with the highest points stored
+# If the agent holds the treasure and a route home is feasible, then it immediately goes to [80,80]
+#---------------------------------------------------------------------------------------------------------------------------------------------------#                
     def decideNextPosition(self):
         nextPosition = [80,80]
         maxpoints = -100000
 
+        # If agent holds the treasure, then it searches for a path home. 
         if self.items['$'] > 0:
-            if self.decideRouteHome(self.position):
+            if self.decideRouteHomefromTreasure(self.position):
                 return nextPosition
-
+        # Loops through all possible coordinates and choose the coordinate with the highest points. 
         for coordinate in self.visibleCoordinates:
             i = coordinate[0]
             j = coordinate[1]
             coordPoints = self.top_global_map_points[i][j]
             distancePoints = self.global_map_distance[i][j] * 0.1
             totalPoints = coordPoints - distancePoints
-            #debug to see points for each coordinate... don't delete
-            #print("{} ({}): {} = {} - {}".format(coordinate, self.global_map_obstacles[i][j], coordPoints, normalvalue, distancevalue))
             if totalPoints > maxpoints:
                 maxpoints = totalPoints
                 nextPosition = [i,j]
 
         return nextPosition
-        
-    def checkRouteHome(self, startingpoint, treasurepoint):
-        #print("Trip to ($) | Starting  items: {}".format(self.items))
-        firsttripresult = self.astarMinimum(self.AstarGlobalMap,startingpoint, treasurepoint, self.items, self.onRaft)
-        #print("First Trip to $: {}".format(firsttripresult))
+    
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# decideRouteHomefromTreasure
+# This function checks if there is a path home from the current starting position
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+    def decideRouteHomefromTreasure(self,starting_coordinate):
+        astarresult = self.astarMinimum(self.AstarGlobalMap,starting_coordinate, self.home, self.items, 0)
+        if len(astarresult[0]) > 0:
+            return 1
+        return 0     
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# checkRouteHome
+# This function checks if there is a path home from the current starting position
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+    def checkRouteHome(self, starting_coordinate, treasure_coordinate):
+        tripToTreasure = self.astarMinimum(self.AstarGlobalMap,starting_coordinate, treasure_coordinate, self.items, self.onRaft)
         temp_globalmap_2 = copy.deepcopy(self.global_map_obstacles)
-        stonecoordinates = firsttripresult[4]
+        stone_coordinates = firsttripresult[4]
         remaining_items = firsttripresult[2]
-        #print('Stones used for first trip($). Stone coordinates: {}'.format(stonecoordinates))
-        for coordinates in stonecoordinates:
+        for coordinates in stone_coordinates:
             temp_globalmap_2[coordinates[0]][coordinates[1]] = ' '
         temp_AstarMap = AstarMap(temp_globalmap_2)
         if len(firsttripresult[0]) > 0:
-            hometripresult = self.astarMinimum(temp_AstarMap, treasurepoint, self.home, remaining_items, 0)
-            #print("Second trip to [80,80]: {}".format(hometripresult))
+            hometripresult = self.astarMinimum(temp_AstarMap, treasure_coordinate, self.home, remaining_items, 0)
         else:
             return 0
         if len(hometripresult[0]) > 0:
-            
             return 1
     
-    def decideRouteHome(self,startingpoint):
-        astarresult = self.astarMinimum(self.AstarGlobalMap,startingpoint, self.home, self.items, 0)
-        #print('PathHome: {}'.format(astarresult))
-        if len(astarresult[0]) > 0:
-            return 1
-        return 0
+
     
     def astarMinimum(self, AstarMap, position, goal, items, onRaft):
         stoneCount = items['o']
