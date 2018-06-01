@@ -1,13 +1,15 @@
 from pqueue import PriorityQueue
 
-
-############### Acknowledgement ###############
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# Acknowledgement
 # Resource: https://raw.githubusercontent.com/ichinaski/astar/master/astar.py
 # - resource used are: graph, astar and node class
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
 
 
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+#           Garph Implementation               #
 
-############### Garph Implementation ###############
 class Graph:
     """
     Abstract graph.
@@ -187,8 +189,8 @@ class AstarMap(Graph):
         else:
           return 0
 
-
-############### Node Implementations ###############
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+#                 Node Implementations                #
 
 
 class Node:
@@ -246,8 +248,8 @@ class PathNode(Node):
         self.stoneLocations += stoneCoord
 
 
-
-############### ASTAR IMPLEMENTATIONS ###############
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+#                 ASTAR IMPLEMENTATIONS              #
 '''
 Descriptions:
 - This is similar to usual astar but Nodes are now having
