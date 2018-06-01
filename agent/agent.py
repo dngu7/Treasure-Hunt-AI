@@ -792,7 +792,7 @@ class Agent:
                 #collect path from memory
                 #newPath = pathMemory[0]
                 self.agentController(bestRoute)
-                does_nothing = self.type_to_move()
+                #does_nothing = self.type_to_move()
             #Use this for manual human gameplay    
             #self.TCP_Socket.send_action(action_list)
             #self.maproute_testing = []
