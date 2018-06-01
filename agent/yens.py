@@ -1,3 +1,5 @@
+# Hybrid implementation of Yens-Astar adapted for this game. 
+
 from astar import astarItems, AstarMap, astarItemsMultiPath
 from operator import itemgetter
 import heapq
