@@ -197,6 +197,7 @@ class Agent:
     
 
     
+    # this function will try to use minimal stones to get to the positions.
     def astarMinimum(self, AstarMap, position, goal, items, onRaft):
         stoneCount = items['o']
         starting_item_list = items.copy()
@@ -249,6 +250,8 @@ class Agent:
         self.update_global_values_flag = 0
 
     def decideBestRoute(self, goal):
+        
+        # storing minimum stone usage as astar memory. 
         astar_memory = self.astarMinimum(self.AstarGlobalMap, self.position, goal, self.items, self.onRaft)
         bestRoute = astar_memory[0]
         bestRouteStones = astar_memory[4]
@@ -269,6 +272,7 @@ class Agent:
         starting_visibleItems = self.visibleItems.copy()
         max_deepMapPoints = 0
 
+        # iterating each paths which were gained from multipath algorithm.
         for routeNb, someRoute in enumerate(aStarMultiPath_List):
             print("Agent is exploring future states of this route. Please wait... \n {}".format(someRoute[0]))
             temp_globalmap = copy.deepcopy(starting_globalmap)
@@ -283,6 +287,8 @@ class Agent:
             #deepMapValues are stored/checked using start, goal, map stone coordinates and starting items (before the route)
             globalMapPoints = self.checkDeepMapValues(self.position, goal, new_stone_coordinates, self.items)
 
+
+            # if we could not find the deep map points,
             if globalMapPoints == 0:
                 for i in new_stone_coordinates:
                     temp_globalmap[i[0]][i[1]] = ' '
@@ -328,6 +334,7 @@ class Agent:
         
         #Limits the level of deep search due to computer constraints
         search_level = search_level + 1
+         # if search level exceeded, just return 0 as a value.
         if search_level > self.deep_search_limit: return 0
 
         #Setup Variables
@@ -339,8 +346,10 @@ class Agent:
 
         print("\n >-- Calculating Map Points ---< {} Start {} |".format(search_level, start))
         print("\n{} Start {} ({}) | visibleItems {}".format(search_level, start, globalmap[start[0]][start[1]], visibleItems))
-
-        #Loops through all visible items
+        
+        
+        # iterate through every visible items and
+        # set those location as simulation/temporary goal,
         for goal in visibleItems:
             #Setup variables
             max_deepMapPoints = 0
@@ -838,7 +847,7 @@ class Agent:
                 #collect path from memory
                 #newPath = pathMemory[0]
                 self.agentController(bestRoute)
-                #does_nothing = self.type_to_move()
+                does_nothing = self.type_to_move()
             #Use this for manual human gameplay    
             #self.TCP_Socket.send_action(action_list)
             #self.maproute_testing = []

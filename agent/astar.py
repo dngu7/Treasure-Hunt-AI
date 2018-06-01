@@ -31,7 +31,7 @@ def manhattan(start, goal):
     return abs(x1 - x2) + abs(y1 - y2)
 
 
-# inherit graph class to suit our global agent map.        
+# AstarMap(Graph): inherit graph class to suit our global agent map.        
 class AstarMap(Graph):
     
     requiredItems = {'-' : 'k', 'T' : 'a'}
@@ -63,16 +63,17 @@ class AstarMap(Graph):
         hcost = manhattan(start,goal)
         return hcost
     
-    # get all legal children at current point
-    # get children will return
-    # the lists contatining
-    # [d, cost, item]
-    # where 
+    # Get all legal children at current point
+    # getChildren() will return the lists contatining:
+    # [d, cost, item, element]
+    #
+    # where: 
     # d - the position index in grid
     #   - d[0] represents row while d[1] represents column
     # cost - the cost to get on to the current position to the neighbour one
     #      - will be always 1.
     # item - gives what sort of items it needs in order to get to the neighbour one
+    # element - what sort of gird element it was in current child.
     def getChildren(self, point, itemAvailable, currRaftState, parentStonePlace):
         y,x = point
     
@@ -85,11 +86,8 @@ class AstarMap(Graph):
             if currI >= 0 and currI < self.size  and currJ >= 0 and  currJ < self.size:
                 neighbours.append( [currI, currJ] )
 
-        #print("all neighbours")
-        #print(indexList)
-
-        legalNeighbours = []
         # find all legal neighbours
+        legalNeighbours = []
         for direction in neighbours:
             
             # if crossing to one of neibbour is legal,
@@ -98,6 +96,8 @@ class AstarMap(Graph):
                 element = self.grid[direction[0]][direction[1]]
                 itemRequired = self.getItemRequired(direction, itemAvailable, currRaftState)
                 cost2Cross = 1 # assuming cost to go to next index is always one.
+
+                # increase the cost to 20 if rocks or raft were used to cross.
                 if itemRequired and (itemRequired == 'o' or itemRequired == 'r') :
                     cost2Cross = 20
                 legalNeighbours.append( [direction, cost2Cross, itemRequired, element] )
@@ -105,10 +105,13 @@ class AstarMap(Graph):
         return legalNeighbours
 
 
+    # This function what sort of items were required to 
+    # get to current directions of child.
     def getItemRequired(self, d, itemAvailable, raftState):
     
         element = self.grid[d[0]][d[1]]
         itemlists = {'k', 'o', 'a', 'r', '$'}
+
         #self.requiredItems s=  {'-' : 'k', 'T' : 'a'}
         # if current map has the element which is on requiredItems 
         # lists, we just simply return that
@@ -123,12 +126,7 @@ class AstarMap(Graph):
         # 3) if we have gained raft item we return raft.
         # Note: stone has higher priority to use then using raft.
         elif element == '~' and itemAvailable:
-        
-            #print("current itemAvailable seeing")
-            #print(itemAvailable)    
-            
             if raftState:
-                #print("on the raft")
                 return {}
             elif 'o' in itemAvailable and itemAvailable['o'] >= 1:
                 return 'o'
@@ -164,20 +162,6 @@ class AstarMap(Graph):
         
         obstacles = ['~', 'T', '-', '*', '?','.']
 
-        '''
-        if d in parentStonePlace:
-            print("there was a parent stone")
-        else:
-            print("these are differences")
-            print(d)
-            print(parentStonePlace)
-
-        if d == [7,2]:
-            print('element {}, raftState {}'.format(element, raftState) )
-            print('parentStonePlace {}'.format(parentStonePlace) )
-            print('items: {}'.format(items) )
-        '''
-
         # if we are already on the raft or 
         # have items to cross water
         if (element  == '~' and (raftState == 1 or ('r' in items and items['r'] > 0) 
@@ -195,12 +179,8 @@ class AstarMap(Graph):
                 and raftState == 0):
             return 1
 
-        # if we have
-
         # if the neighbour is not obstacles
         elif (element not in obstacles ):
-            #if element == '$':
-            #    print("goal found")
             return 1
         
         # Otherwise illegal
@@ -219,7 +199,15 @@ class Node:
         self.cost = cost
         self.parent = parent
         
-# this class will implement node class but specific to our problem.
+# PathNode(Node): this class will implement Node class but specific to our problem.
+'''
+Descriptions:
+- Each node (called "PathNode") will store:
+    (a) Item remaining so far.
+    (b) Cost to getting to that node
+    (c) Raft State at that node
+    (d) Stone placed so far.
+'''
 class PathNode(Node):
     def __init__(self, position, itemAvailable = {}, cost = 0, parent=None, raftState = 0):
     
@@ -245,7 +233,6 @@ class PathNode(Node):
     def getItemAvailable(self):
         return self.itemAvailable
 
-    # get raft state
     def getRaftState(self):
         return self.raftState
 
@@ -260,8 +247,35 @@ class PathNode(Node):
 
 
 
-############### Astar Implementations ###############
+############### ASTAR IMPLEMENTATIONS ###############
+'''
+Descriptions:
+- This is similar to usual astar but Nodes are now having
+  items or raft State to record. 
+- The previous PathNode description tells in detail how it stores.
 
+Input:
+- This function has inputs as following:
+    - [graph, start, goal, itemsAvailable, initialRaftState, illegalEdges]
+    - graph: The graph which uses AstarGraph class.
+    - start: starting position as the list not tuple.
+    - goal: goal position which is also list.
+    - itemsAvailable: dictionary which contains the items as the key and stores the counter
+    - initialRaftState: whether current agent is on the raft or not.
+    - illegalEdges: options for the user to say the path is illegal.
+
+
+Output: 
+- This function will return following:
+    - [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace]
+    - path: path generated by astar which contains lists of positions.
+        eg. [[1,2], [1,3]]
+    - itemUsedState: this is to tell whether any items during the path.
+    - finalItemList: item dictionary after it has reached to the goal.
+    - finalStonePlace: the position list which contains the position of stones
+                       which was placed to the water to cross.
+    
+'''
 def astarItems(graph, start, goal, itemsAvailable, initialRaftState, illegalEdges):
     
     #itemsAvailable = intialItems.copy()
@@ -312,23 +326,12 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState, illegalEdge
         curr_available = curr_node.getItemAvailable()
         raftState = curr_node.getRaftState()
         parentStonePlace = curr_node.getStonePlaced().copy()
-
-        '''
-        print('parentStonePlace {}'.format(parentStonePlace))
-
-        if list(position) == [7,1]:
-            print("raft state for 7,1")
-            print(raftState)
-        '''
         
         # for each legal child for current parent,
         for childPosition, actionCost, itemRequired, element in graph.getChildren(position, curr_available, 
                                                                                   raftState,parentStonePlace):
             copyStonePlaced = parentStonePlace.copy()
-            '''
-            if childPosition == [7,2]:
-                print("at least 7,2 is legal")
-            '''
+
             # if illegal edges were given 
             # and current one is illegal, ignore current child.
             pos1 = list(position).copy()
@@ -395,7 +398,7 @@ def astarItems(graph, start, goal, itemsAvailable, initialRaftState, illegalEdge
             position_list = list(position)
             path.insert(0, position_list)
 
-    return [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace] #finalItemList, ]
+    return [path, itemUsedState, finalItemList, finalRaftState, finalStonePlace]
 
 # This function compares two item dictionaries 
 # and see whether they have the same counting or
@@ -428,11 +431,8 @@ def deductItem( itemDict, item):
         itemDict[item] -= 1
         
     return itemDict
-    
-    
-    
 
-
+# astar items but returning the lists of PathNode itself.
 def astarItemsMultiPath(graph, start, goal, itemsAvailable, initialRaftState, illegalEdges):
     
     #itemsAvailable = intialItems.copy()
