@@ -132,6 +132,7 @@ class Agent:
         else:
             return 0
     
+    # this function will try to use minimal stones to get to the positions.
     def astarMinimum(self, AstarMap, position, goal, items, onRaft):
         stoneCount = items['o']
         starting_item_list = items.copy()
@@ -176,29 +177,45 @@ class Agent:
             self.global_map_values[coordinate[0]][coordinate[1]] = -10003
                 
     def decideBestRoute(self, goal):
-        astar_memory = self.astarMinimum(self.AstarGlobalMap, self.position, goal, self.items, self.onRaft)
+        
+
+        # deep copy of current items dictionary
+        itemDC = self.items.copy()
+        
+
+        # storing minimum stone usage as astar memory. 
+        astar_memory = self.astarMinimum(self.AstarGlobalMap, self.position, goal, itemDC, self.onRaft)
         bestRoute = astar_memory[0]
         bestRouteStones = astar_memory[4]
-        obstacle = self.global_map[goal[0]][goal[1]]
-
-        #goal is not an item 
-        #goal requires no rocks
-
-        if not ((obstacle in self.items and len(bestRouteStones) > 0) or (obstacle == 'o' and len(bestRoute) > 0 and self.items['o'] > 0)):
-            return bestRoute
-
         print("\n0 Start {} | Goal {} ({})| Original Path {}".format(self.position, goal, self.global_map[goal[0]][goal[1]], bestRoute))
         print("0 Start {} | Goal {} ({})| Stones Required {}".format(self.position, goal, self.global_map[goal[0]][goal[1]], bestRouteStones))
         print("0 Start {} | Goal {} ({})| Visible Items {}".format(self.position, goal, self.global_map[goal[0]][goal[1]], self.visibleItems))
+        
+        
+        obstacle = self.global_map[goal[0]][goal[1]]
+        
+        # not conditions - All condition below must fail in order to use
+        # the path created by astarMinimum. 
+        # The conditions are:
+        # 1) if we have the item at current goal and if we use some stones already
+        # - Then, the Agent dont have to be there to waste the stone.
+        # 2) if the goal was just the stone and if we have stones already.
+        if not ((obstacle in self.items and len(bestRouteStones) > 0) or (obstacle == 'o' and len(bestRoute) > 0 and self.items['o'] > 0)):
+            return bestRoute
 
-        aStarMultiPath_List = YenAstarMultiPath(self.global_map, self.position, goal, self.items, self.onRaft)  #Generate Multiple Paths
+        #Generate Multiple Paths to the goal.
+        aStarMultiPath_List = YenAstarMultiPath(self.global_map, self.position, goal, self.items, self.onRaft)  
 
 
         starting_globalmap = copy.deepcopy(self.global_map)
         starting_visibleItems = self.visibleItems.copy()
         max_points = 0
 
+        # iterating each paths which were gained from multipath algorithm.
         for routeNb, someRoute in enumerate(aStarMultiPath_List):
+            
+            # copying current global map for the AI to simulate in 
+            # deep map values.
             temp_globalmap = copy.deepcopy(starting_globalmap)
             temp_visibleItems = starting_visibleItems.copy()
             temp_visibleItems.remove(goal)
@@ -210,15 +227,21 @@ class Agent:
 
             globalMapPoints = self.checkDeepMapValues(self.position, goal, new_stone_locations, new_items)
 
+
+            # if we could not find the deep map points,
             if globalMapPoints == 0:
+                
+                # resetting the stone location to be empty.
+                # Shouldnt this be water???????
                 for i in new_stone_locations:
                     temp_globalmap[i[0]][i[1]] = ' '
 
                 #only for debuging
                 str_stoneLocation = str(new_stone_locations)
                 str_currentItems = str(self.items)
-                
 
+                # recursive call to calculate global values.
+                # search will be restricted by the level variables.
                 temp_AstarMap = AstarMap(temp_globalmap)
                 print("!0 r{} Start {} | Goal {} ({})| Potential Path {}".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]], someRoute[0]))
                 print("!0 r{} Start {} | Goal {} ({})| CALCULATING Global Values... \n".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]]))
@@ -229,11 +252,18 @@ class Agent:
                 print("\n!0 r{} Start {} | Goal {} ({})| FINISHED Global Values".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]]))
                 print("!0 r{} Start {} | Goal {} ({})| Map Points {}".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]], globalMapPoints))
                 print("!0 r{} Start {} | Goal {} ({})| Finishing items {}".format(routeNb, self.position, goal, temp_globalmap[goal[0]][goal[1]], someRoute[2]))                    
+            
+            # update the largest values 
+            # if current map points are bigger than
+            # previous max.
             if globalMapPoints > max_points:
                 max_points = globalMapPoints
                 bestRoute = someRoute[0].copy()
                 bestRouteStones = new_stone_locations.copy()
                 bestStartingItems = new_items.copy()
+
+                # if we found the path to the goal and return, 
+                # regardless.
                 if max_points > 10000:
                     break
                 print("!0 r{} Start {} | Goal {} ({})| New Best Path {}".format(routeNb, self.position, goal, self.global_map[goal[0]][goal[1]], bestRoute))
@@ -245,8 +275,11 @@ class Agent:
     def deepSearch_globalMapPoints(self, DS_AstarMap, globalmap, visibleItems, start, items, raftstate, search_level, new_stone_locations):
         current_globalMapPoints = 0
         search_level = search_level + 1
+
+        # if search level exceeded, just return 0 as a value.
         if search_level > self.deep_search_limit:
             return 0
+
         # Loop through visible coordinates
         bestGlobalMap = copy.deepcopy(globalmap)
         bestRouteStones = []
@@ -257,29 +290,42 @@ class Agent:
         new_stone_locations_prev = new_stone_locations.copy()
         print("\n >-- Calculating Map Points ---< {} Start {} |".format(search_level, start))
         print("\n{} Start {} ({}) | visibleItems {}".format(search_level, start, globalmap[start[0]][start[1]], visibleItems))
+        
+        
+        # iterate through every visible items and
+        # set those location as simulation/temporary goal,
         for goal in visibleItems:
+            
+            # 1) try to get to the goal with minimum number of item uses.
             curr_astar_path = self.astarMinimum(DS_AstarMap, start, goal, items, raftstate)
             currRouteStones = curr_astar_path[4]
             currRoute = curr_astar_path[0]
             max_points = 0
             obstacle = globalmap[goal[0]][goal[1]]
 
+            # if there is no such path, go on to the next item location.
             if len(currRoute) == 0:
                 continue
             
-            if (obstacle in self.items and len(currRouteStones) > 0) or (obstacle == 'o' and len(currRoute) > 0): #if stones are used then ai needs to begin planning by generating multiple options with YenAstarMultiPath
+            # 2) if stones are used then ai needs to begin planning by generating multiple options with YenAstarMultiPath
+            if (obstacle in self.items and len(currRouteStones) > 0) or (obstacle == 'o' and len(currRoute) > 0): 
 
                 print("\n{} Start {} | Goal {} ({})| Original Path {}".format(search_level, start, goal, globalmap[goal[0]][goal[1]], curr_astar_path[0]))
                 print("{} Start {} | Goal {} ({})| Stones Required {}".format(search_level, start, goal, globalmap[goal[0]][goal[1]], currRouteStones))
 
+                # get all other available paths.
                 aStarMultiPath_List = YenAstarMultiPath(globalmap, start, goal, items, raftstate)
                 starting_globalmap = copy.deepcopy(globalmap)
                 starting_visibleItems = visibleItems.copy()
+
+                # for each available paths,  
                 for routeNb, someRoute in enumerate(aStarMultiPath_List):
                     temp_globalmap = copy.deepcopy(starting_globalmap)
                     temp_visibleItems = starting_visibleItems.copy()
                     globalMapPoints = 0
 
+                    # if current goal is already considered,
+                    # remove from the list.
                     if goal in starting_visibleItems:
                         starting_visibleItems.remove(goal)
                     search_level = 0
@@ -737,7 +783,7 @@ class Agent:
                 #newPath = pathMemory[0]
                 #print("aStarMemory: {}".format(self.astar_memory[nextPosition[0]][nextPosition[1]]))
                 self.agentController(bestRoute)
-                #does_nothing = self.type_to_move()
+                does_nothing = self.type_to_move()
             #Use this for manual human gameplay    
             #self.TCP_Socket.send_action(action_list)
             #self.maproute_testing = []
