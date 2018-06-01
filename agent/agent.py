@@ -3,7 +3,7 @@
 # Project 3 (Option 1): Treasure Hunt
 # Group 37
 # David Nguyen (z5154591)
-# Yong Yooshin (zxxxxxx)
+# Yong Yooshin (z3461805)
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 #  Agent Description Summary                                                                                                                        
@@ -17,6 +17,12 @@
 #  5. Decision Trees with pruning            > Assessment of multiple paths using future global map states using object point system (deep search)
 #  6. Deep Global Map Points Memory          > Stores deep searched global map points to avoid repeitive decision trees
 
+'''
+comments to david:
+- Can we word Scores rather than Points? Since we are playing around with coordinate system, 
+  This can be confusing to the marker.
+
+'''
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 #  Agent Design: 
@@ -34,6 +40,10 @@
 # B. Path Search (A-Star and Yen-Astar Multiple Path Search
 #
 # The coordinate with the highest points is chosen and a path is generated using the A-Star Heuistic function stored in the astar.py file
+'''
+Umm im not sure what do you want me to add here?  
+I think everyone know what A-star is so, i think its enough by explanations here.
+'''
 # (Yooshin add lines hhere)
 #
 # When A-Star Search returns a path that requires the use of stones or the next position is an item, then agent uses our Yen-Astar hybrid search 
@@ -43,7 +53,7 @@
 # C. Decision Tree with memory/pruning
 #
 # The agent decides between different paths by calculating the total points of future global map states points. It carries this out by generating 
-# temporary maps with the new stone placements and generates paths to all visible items using path searchh described above. 
+# temporary maps with the new stone placements and generates paths to all visible items using path search described above. 
 # This process continues to deepen the decision tree and explores all possible outcomes until all items are unreachable. 
 # The path that generates the highest points based on its future states are returned and executed by the agent. 
 # 
