@@ -1,3 +1,6 @@
+# TCP Socket implementation in Python
+# Connects to the game and returns a map to the agent
+
 
 import socket
 
