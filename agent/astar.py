@@ -477,7 +477,7 @@ def astarItemsMultiPath(graph, start, goal, itemsAvailable, initialRaftState, il
 
         #track of its items remainings
         nodeTable[position] = curr_node
-
+        
 
 
         
