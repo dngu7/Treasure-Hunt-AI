@@ -1,5 +1,5 @@
 #           Sample Agent for Text-Based Adventure Game      #
-#           Implemented in Python3.6                        #
+#           Implemented in Python3.5                        #
 
 import sys
 import pickle
@@ -12,7 +12,117 @@ from yens import YenAstarMultiPath
 import copy
 
 
+#################################################################
+'''
+OUR MAJOR STRATEGIES:
+
+
+1) Global Mapping
+- For this project the server only gives you 
+  5 x 5 visible window which is only the partial map
+  of entire map.
+- It also has 80 x 80 maximum array size as the entire map.
+- Hence, we need to record our Global map as the agent moves 
+  on the map in order to commence the smart moves.
+- 
+
+
+
+'''
+#################################################################
+
 class Agent:
+    
+    '''
+    Our Agent has following states/objects:
+
+    1) self.TCP_Socket: 
+    - Creating socket object for handling connections to the server it sends.
+
+    2) view_size & view_window:
+    - This is the window size and its array that the agent can currently sees. 
+    - In our project it is always 5 x 5 size window
+    - We gain this information via Server.
+
+    3) global_map_size & global_map
+    - The global map is the map where agent records what it sees
+    - In our project, it has a size of 80 x 80 as a maximum.
+    - so, we assumed that we always start at the center of 160 x 160 map
+    - which can handle the actual global map whichever the starting position is.
+
+    4) global_map_distance 
+    - This will store the manhattan distance for global map with respect to the current
+      agent position.
+    - This will be used as the measure to compare scores for each positions.
+   
+    5) top_global_map_values
+    - 
+
+    6) deep_global_map_values
+    - 
+    
+    7) AstarGlobalMap
+    - Creating a graph object to use the Astar.
+
+    8) items
+    - This will keep track what items that the agent used.
+    - it will store as dictionary as following items:
+        - 'k' stands for the key
+        - 'o' stands for the rocks
+        - 'r' stands for the raft
+        - '$' stands for the treasure.
+    
+    9) visibleItemsPts
+    - This dictionary is to score how much it worths to have each items
+    - currently scores are given as:
+        -  {'k' : 100, 'o' : 100, 'a' : 100, 'T' : 100, '$' : 10000}
+
+    10) direction
+    - This will store the agent heading direction with respect to the global map we
+      have
+    - The possible directions are: 
+        - 0, 90, 180, 270
+     
+    11) position
+    - Agent's current position with respect to the global map.
+
+    12) home
+    - Agent's home position which it has to return.
+    
+    13) onRaft & onLand
+    - This is to tell whether Agent is on the land or raft.
+
+    14)  actionQueue 
+    - This is the queue object which stores the commands that agent made.
+    - to the server
+
+    15) rotationAngleTbl
+    - This is to indicate what direction that the Agent should face
+    - if Agent is moving particular position if agent is at (0,0)
+    - They are:  {(-1,0): 0, (0,-1): 90, (1,0): 180, (0,1): 270}
+
+    16) placedStonesList
+    - This is to record where the agent placed the stone so far in the 
+      global map.
+
+    17) visibleCoordinates & visibleItems
+    - storing the coordinates of visible items.
+    - and what items we are currently visible.
+
+
+    18) exploredCoordinates = [[80,80]]
+    - recording where we have explored to reduce repetitive the expolartions
+
+    19) deep_search_limit
+    - this is the limit in the decision tree.
+    - currently it was set to 6.
+    
+    20) update_global_values_flag
+    - 
+    
+    21) theGoldPath
+    - storing the path to the treasure.
+    '''
     def __init__(self, ip_address, port_no, view_size):
         self.TCP_Socket = TCPSocketManager(ip_address, port_no, view_size)
         self.view_size = view_size
@@ -71,6 +181,8 @@ class Agent:
             self.deep_global_map_values[x][y][goal][stoneLocation] = {}
         self.deep_global_map_values[x][y][goal][stoneLocation][currentItems] = deepMapValue
                 
+
+    # This will decide the positions of 
     def decideNextPosition(self):
         nextPosition = [80,80]
         maxpoints = -100000
@@ -180,7 +292,7 @@ class Agent:
             return bestRoute
 
         
-        astar_memory = self.astarMinimum(self.AstarGlobalMap, self.position, goal, itemDC, self.onRaft)
+        astar_memory = self.astarMinimum(self.AstarGlobalMap, self.position, goal, self.items, self.onRaft)
         bestRoute = astar_memory[0]
         bestRouteStones = astar_memory[4]
         print("\n0 Start {} | Goal {} ({})| Original Path {}".format(self.position, goal, self.global_map[goal[0]][goal[1]], bestRoute))
@@ -714,24 +826,40 @@ class Agent:
         print("+{}+\n".format("-" * print_size))
         return 0
 
-                 
+    # this is the main function of agent.py           
     def main_loop(self):
         time.sleep(1)
         refreshvalues_flag = 0
         action_list = ['z']
         while (True):
             for i in range(len(action_list)):
+                
+                # move the agent with cooresponding action list.
+                # this includes direction its heading and position in
+                # global map.
                 self.move_agent(action_list[i])
+
+
+                # 1) read the agent's current window. This means that the
+                # agent can only view 5 x 5 size from the server not
+                # the whole map. 
+                # 2) update the global map using current window and 
+                #    agent's positions. -> see update_global_map() for details
                 self.view_window = self.TCP_Socket.recv_map()
                 if len(self.view_window) > 0:
                     self.update_global_map()
                     self.print_small_matrix(self.view_window, self.view_size)
                     print("Item List: {}".format(self.items))
 
+            # if there are no current action to commence remains in the 
+            # keyboard, we need to decide the next positions.
             if self.actionQueue.empty():
                 refreshvalues_flag += 1
                 self.print_large_matrix(self.global_map, 160)
                 self.updateDistance()
+
+                 # if agent had a movement, we need to update the scores for each global map.
+                # This was there to reduce the time spent in calculating the values.
                 if self.update_global_values_flag or refreshvalues_flag > 1:
                     self.update_global_values()
                     refreshvalues_flag = 0
@@ -745,7 +873,11 @@ class Agent:
                     print("{} ({}) ({})".format(i, self.global_map[i[0]][i[1]], self.top_global_map_values[i[0]][i[1]]))
                     #print("{} ({}) ({})".format(i, self.global_map[i[0]][i[1]], self.deep_global_map_values[self.position[0]][self.position[1]][str(i)]))                    
 
+                # deciding next position to go based on the score in the entire map.
                 nextPosition = self.decideNextPosition()
+
+                # now deciding how to get to that positions
+                # by using astar and etc.
                 bestRoute = self.decideBestRoute(nextPosition)
 
 
@@ -754,14 +886,21 @@ class Agent:
 
                 #collect path from memory
                 #newPath = pathMemory[0]
+
+                # converting the routes to the series of commands
+                # to send to server. Series of commands stored in 
+                # the self.actionQueue
                 self.agentController(bestRoute)
-                does_nothing = self.type_to_move()
+
+                # waiting for user input to continue. 
+                # -> remove this later. This only exists for debugging purposes.
+                #does_nothing = self.type_to_move()
+
             #Use this for manual human gameplay    
             #self.TCP_Socket.send_action(action_list)
             #self.maproute_testing = []
 
             #Use this for AI Keyboard Control
-            
             if not self.actionQueue.empty():
                 action_list = self.actionQueue.get()
                 print(action_list)
@@ -769,13 +908,14 @@ class Agent:
 
 
 
+###############################################################################
 
+# Main Function for the agent.py.
 
 # Input: python3 Agent -p [port_no]
 port_no = int(sys.argv[2])
 ip_address = '127.0.0.1'
 view_size = 5
-
 
 new_agent = Agent(ip_address, port_no, view_size)
 new_agent.main_loop()

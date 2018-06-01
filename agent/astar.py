@@ -428,16 +428,11 @@ def deductItem( itemDict, item):
         itemDict[item] -= 1
         
     return itemDict
-    
-    
-    
 
 
+# this will allow to return the node objects
 def astarItemsMultiPath(graph, start, goal, itemsAvailable, initialRaftState, illegalEdges):
     
-    #itemsAvailable = intialItems.copy()
-    #print("initial state") print(itemsAvailable)
-
     # Fringe. Nodes not visited yet
     openList = PriorityQueue()
 
