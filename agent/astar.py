@@ -472,15 +472,11 @@ def astarItemsMultiPath(graph, start, goal, itemsAvailable, initialRaftState, il
         # Save the node in the closed list, and keep track of its parent
         if curr_node.parent != None:
             closedList[position] = curr_node.parent.position
-        else:   
+        else:
             closedList[position] = curr_node.position
 
         #track of its items remainings
         nodeTable[position] = curr_node
-        
-
-
-        
         
         # arrived to goal so save it as goal node.
         if position == goal_tuple:
