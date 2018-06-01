@@ -63,7 +63,7 @@ def YenAstarMultiPath(globalmap, source, destination, itemlist, onRaft):
             visitededges.setdefault(str(current_path[0][i+1]),[]).append(spurNode)
 
             #limits number of branches to 3 best paths from spurnode
-            if len(visitededges[str(spurNode)]) > 3:
+            if len(visitededges[str(spurNode)]) > 4:
                 continue
 
             #Add rootpath to illegal edges in avoid looping
@@ -101,14 +101,13 @@ def YenAstarMultiPath(globalmap, source, destination, itemlist, onRaft):
                     
     finalpathlist = []
     leaststonesused = min(len(i) for i in exploredPaths)
-
     #Return a list of shortest pathhs for each stone combination. Only the combinations with the least stones are returned. 
     for stonecombo in exploredPaths:
         if len(stonecombo) == leaststonesused:
             if obstacle == 'o':
                 exploredPaths[stonecombo][2]['o'] += 1
             finalpathlist.append(exploredPaths[stonecombo])
-        
+
     return finalpathlist
 
 

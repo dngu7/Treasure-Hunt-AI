@@ -20,40 +20,24 @@
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 #  Agent Design: 
-# 
-# A. Core Loop (Global Map Memory and Point System)                                                                                                                         #
 #                               
 # When the agent starts, it begins the main loop function which carries out 5 important steps. The agent stores the map received from the game
 # in a large 160x160 global map (global_map_obstacles) using the update_global_map_obstacles() function. Next, each coordinate in the map is assigned points 
-# based on a system which prioritizes exploration of land/water and picking up items depending on 3 factors: Reachability, item importance and
+# based on a system which prioritizes exploration of land/water and picks up items depending on 3 factors: Reachability, item importance and
 # distance. These points are calculated after every move (using the calculateTotalCoordPoints function) and is saved in the top_global_map_points. 
-# The agent uses these points to determine which position should be taken on the next move with the decideNextPosition() function. 
-# With the new position selected, the agent uses a combination of A-Star, Yen's A-star and a decision tree to determine the best route to take.
-# The route is fed into the agentController function which converts a list of positions into player commands that are sendable to the socket. 
-# 
-# B. Path Search (A-Star and Yen-Astar Multiple Path Search
-#
-# The coordinate with the highest points is chosen and a path is generated using the A-Star Heuistic function stored in the astar.py file
-# (Yooshin add lines hhere)
-#
-# When A-Star Search returns a path that requires the use of stones or the next position is an item, then agent uses our Yen-Astar hybrid search 
-# algorithm to create multiple paths to assess more possible route options to ensure the best path is selected. The shortest path for each possible 
-# #stone placement is returned and assessed in a deepening decision tree discussed below
-#
-# C. Decision Tree with memory/pruning
-#
-# The agent decides between different paths by calculating the total points of future global map states points. It carries this out by generating 
-# temporary maps with the new stone placements and generates paths to all visible items using path searchh described above. 
+# The agent uses these points to determine the next move using decideNextPosition() function. 
+# With the new position selected, the agent uses a combination of A-Star, Yen's Algorithm and a decision tree to determine the best route to take.
+# The route is fed into the agentController function which converts a list of positions into player commands that are sent to the game socket. 
+
+# The coordinate with the highest points is chosen and multiple routes are created using a combination A-Star Search and Yen's Algorithm.
+# The agent decides between different routes by calculating the total points of future global map states points. It carries this out by generating 
+# temporary maps with the new stone placements and generates paths to all visible items using path search described above. 
 # This process continues to deepen the decision tree and explores all possible outcomes until all items are unreachable. 
 # The path that generates the highest points based on its future states are returned and executed by the agent. 
-# 
-# Memory and pruning are implemented to optimize the decision tree calculation speed. As the agent generates future global map states, it saves
-# its values in memory (deep_global_map_points) to avoid repeitive calculations in the future. A future state can vary by the agents current items and 
-# future stone coordinates so these are also stored as seperate states to ones where the items or stone coordinates are different.
-# The agent also prunes route layers that are valued less than previous routes layers. A layer represents the level of deep search by the agent. 
-# 
-# When a path is found from the agent's current position to the treasure and then home, then the agent executes the entire "final" path immediately. 
-# This "final path" pruning saves the agent significant time as it only needs to calculate the final winning path once. 
+# Memory and pruning have also been implemented to optimize the decision tree calculation speed. As the agent generates future global map states, it saves
+# its values in memory (deep_global_map_points) to avoid repeitive calculations in the future. When a path is found from the agent's current position 
+# to the treasure and then home, then the agent executes the entire "final" path immediately. This "final path" pruning saves the agent significant 
+# time as it only needs to calculate the final winning path once. 
 
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
@@ -97,9 +81,9 @@ class Agent:
         self.visibleCoordinates = []
         self.visibleItems = []
         self.exploredCoordinates = [[80,80]]
-        self.deep_search_limit = 10
+        self.deep_search_limit = 20
         self.max_layer_points = [0] * (self.deep_search_limit + 1)
-        self.update_global_values_flag = 0
+        self.update_global_values_flag = 1
         self.theFinalPath = []
 
     #------------------------------------------------------------------------------------#
@@ -149,13 +133,16 @@ class Agent:
     # If the agent holds the treasure and a route home is feasible, then it immediately goes to [80,80]
     #------------------------------------------------------------------------------------#                
     def decideNextPosition(self):
-        nextPosition = [80,80]
+        nextPositions = [[80,80]]
         maxpoints = -100000
+        maxcoordPoint = -100000
+        goal_list = []
+        
 
         # If agent holds the treasure, then it searches for a path home. 
         if self.items['$'] > 0:
             if self.decideRouteHomefromTreasure(self.position):
-                return nextPosition
+                return nextPositions
         # Loops through all possible coordinates and choose the coordinate with the highest points. 
         for coordinate in self.visibleCoordinates:
             i = coordinate[0]
@@ -163,11 +150,16 @@ class Agent:
             coordPoints = self.top_global_map_points[i][j]
             distancePoints = self.global_map_distance[i][j] * 0.1
             totalPoints = coordPoints - distancePoints
+            obstacle = self.global_map_obstacles[i][j]
             if totalPoints > maxpoints:
                 maxpoints = totalPoints
-                nextPosition = [i,j]
+                nextPositions = [[i,j]]
+                nextObstacle = obstacle
+                maxcoordPoint = coordPoints
+            elif maxcoordPoint == coordPoints and nextObstacle in self.visibleItemsPts and nextObstacle == obstacle:
+                nextPositions.append([i,j])
 
-        return nextPosition
+        return nextPositions
     
     #------------------------------------------------------------------------------------#
     # decideRouteHomefromTreasure()
@@ -215,14 +207,14 @@ class Agent:
         if items['r'] > 0:
             starting_stones = totalStoneCount
         
-        for stoneCount in range(starting_stones, totalStoneCount+1):
+        for count in range(starting_stones, totalStoneCount+1):
             items = starting_item_list.copy()
             items['o'] = count
             
             testRoute = astarItems(AstarMap, position, goal, items, onRaft,[])
 
             if (len(testRoute[0])) > 0:
-                testRoute[2]['o'] = totalStoneCount - stoneCount
+                testRoute[2]['o'] = totalStoneCount - count
                 return testRoute
         
         return astarItems(AstarMap, position, goal, starting_item_list, onRaft, [])
@@ -232,71 +224,78 @@ class Agent:
     # This function creates the best route to a goal(coordinate) using a modified 
     # yen algorithm/astar heuristic search and a decision tree.
     #------------------------------------------------------------------------------------#
-    def decideBestRoute(self, goal):
-        self.max_layer_points = [0] * (self.deep_search_limit + 1)
+    def decideBestRoute(self, goal_list):
+        #self.max_layer_points = [0] * (self.deep_search_limit + 1)
+        best_goal_points = 0
+        best_goal_route = []
+        for goal in goal_list:
+            #Generates a simple path using Astar Search
+            astar_memory = self.astarMinimum(self.AstarGlobalMap, self.position, goal, self.items, self.onRaft)
+            bestRoute, bestRouteStones = astar_memory[0], astar_memory[4]
+            obstacle = self.global_map_obstacles[goal[0]][goal[1]]
 
-        #Generates a simple path using Astar Search
-        astar_memory = self.astarMinimum(self.AstarGlobalMap, self.position, goal, self.items, self.onRaft)
-        bestRoute, bestRouteStones = astar_memory[0], astar_memory[4]
-        obstacle = self.global_map_obstacles[goal[0]][goal[1]]
+            # If the goal is water or land, then immediately return the simple astar path. 
+            if not ((obstacle in self.items and len(bestRouteStones) > 0) or (obstacle == 'o' and len(bestRoute) > 0 and self.items['o'] > 0)):
+                return bestRoute
 
-        # If the goal is water or land, then immediately return the simple astar path. 
-        if not ((obstacle in self.items and len(bestRouteStones) > 0) or (obstacle == 'o' and len(bestRoute) > 0 and self.items['o'] > 0)):
-            return bestRoute
+            print("Agent is calculating the best route to {} ({}). Please wait...".format(goal, obstacle))
+            
 
-        print("Agent is calculating the best route to {} ({}). Please wait...".format(goal, obstacle))
-        
-        #Generates multiple paths using a hybrid Yen-Astar Search Algorithm. 
-        aStarMultiPath_List = YenAstarMultiPath(self.global_map_obstacles, self.position, goal, self.items, self.onRaft)  #Generate Multiple Paths
+            #Generates multiple paths using a hybrid Yen-Astar Search Algorithm. 
+            aStarMultiPath_List = YenAstarMultiPath(self.global_map_obstacles, self.position, goal, self.items, self.onRaft)  #Generate Multiple Paths
 
-        #Setup copies of the global maps to use in generating the decision tree
-        starting_globalmap = copy.deepcopy(self.global_map_obstacles)
-        starting_visibleItems = self.visibleItems.copy()
-        max_deepMapPoints = 0
+            #Setup copies of the global maps to use in generating the decision tree
+            starting_globalmap = copy.deepcopy(self.global_map_obstacles)
+            starting_visibleItems = self.visibleItems.copy()
+            max_deepMapPoints = 0
 
-        # Loop through all routes to decide the best route to take using future global map states
-        for routeNb, someRoute in enumerate(aStarMultiPath_List):
-            print("Agent is exploring future global map states of this route. Please wait... \n {}".format(someRoute[0]))
-            temp_globalmap = copy.deepcopy(starting_globalmap)
-            temp_visibleItems = starting_visibleItems.copy()
-            temp_visibleItems.remove(goal)
-            search_level = 0
+            # Loop through all routes to decide the best route to take using future global map states
+            for routeNb, someRoute in enumerate(aStarMultiPath_List):
+                print("Agent is exploring future global map states of this route. Please wait... \n {}".format(someRoute[0]))
+                temp_globalmap = copy.deepcopy(starting_globalmap)
+                temp_visibleItems = starting_visibleItems.copy()
+                temp_visibleItems.remove(goal)
+                search_level = 0
 
-            new_items = someRoute[2]
-            new_raftstate = someRoute[3]
-            new_stone_coordinates = self.placedStonesCoordinates + someRoute[4]
+                new_items = someRoute[2]
+                new_raftstate = someRoute[3]
+                new_stone_coordinates = self.placedStonesCoordinates + someRoute[4]
 
-            # Agent checks if this route's future global map state has been assessed previously. 
-            globalMapPoints = self.checkDeepMapValues(self.position, goal, new_stone_coordinates, self.items)
+                # Agent checks if this route's future global map state has been assessed previously. 
+                globalMapPoints = self.checkDeepMapValues(self.position, goal, new_stone_coordinates, self.items)
 
-            #If the route's global map state hasn't been found, then generate a temporary map with the new stone locations created on the new route. 
-            if globalMapPoints == 0:
-                for i in new_stone_coordinates:
-                    temp_globalmap[i[0]][i[1]] = ' '
-                temp_AstarMap = AstarMap(temp_globalmap)
-                
-                #Calculate the value of the route's future global map state if the route was executed
-                globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, temp_visibleItems, goal, new_items, new_raftstate, search_level, new_stone_coordinates)
-                if globalMapPoints < 0:
-                    continue
-                #Store the value of the route's future global map state 
-                self.addDeepMapValues(self.position, goal, new_stone_coordinates, self.items, globalMapPoints)
-                
+                #If the route's global map state hasn't been found, then generate a temporary map with the new stone locations created on the new route. 
+                if globalMapPoints == 0:
+                    for i in new_stone_coordinates:
+                        temp_globalmap[i[0]][i[1]] = ' '
+                    temp_AstarMap = AstarMap(temp_globalmap)
+            
+                    #Calculate the value of the route's future global map state if the route was executed
+                    globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, temp_visibleItems, goal, new_items, new_raftstate, search_level, new_stone_coordinates)
+                    if globalMapPoints < 0:
+                        continue
+                    #Store the value of the route's future global map state 
+                    self.addDeepMapValues(self.position, goal, new_stone_coordinates, self.items, globalMapPoints)
+                    
 
-            #The best route will have the highest global map points. This path is saved. 
-            if globalMapPoints > max_deepMapPoints:
-                max_deepMapPoints = globalMapPoints
-                bestRoute = someRoute[0].copy()
-                bestRouteStones = new_stone_coordinates.copy()
-                
-                #The winning pathh was found so the entire search is stopped and this path is prioritized
-                if max_deepMapPoints > 100000:
-                    self.theFinalPath = bestRoute + self.theFinalPath
-                    break
+                #The best route will have the highest global map points. This path is saved. 
+                if globalMapPoints > max_deepMapPoints:
+                    max_deepMapPoints = globalMapPoints
+                    bestRoute = someRoute[0].copy()
+                    bestRouteStones = new_stone_coordinates.copy()
+                    
+                    #The winning pathh was found so the entire search is stopped and this path is prioritized
+                    if max_deepMapPoints > 100000:
+                        self.theFinalPath = bestRoute + self.theFinalPath
+                        break
 
-        if len(self.theFinalPath) > 0:
-            return self.theFinalPath
-        return bestRoute
+            if len(self.theFinalPath) > 0:
+                return self.theFinalPath
+
+            if globalMapPoints >= best_goal_points:
+                best_goal_points = globalMapPoints
+                best_goal_route = bestRoute.copy()
+        return best_goal_route
 
     #------------------------------------------------------------------------------------#
     # deepSearch_globalMapPoints
@@ -330,7 +329,8 @@ class Agent:
 
             #If stones used, then it requires multiple path assessment to determine best possible path
             if (obstacle in self.items and len(currRouteStones) > 0) or (obstacle == 'o' and len(currRoute) > 0): #if stones are used then ai needs to begin planning by generating multiple options with YenAstarMultiPath
-                
+
+             
                 #Multiple Paths will be generated using YenAStar 
                 aStarMultiPath_List = YenAstarMultiPath(globalmap, start, goal, items, raftstate)
 
@@ -354,7 +354,8 @@ class Agent:
 
                     #update stone coordinates of the new map based on new stones generated by this route
                     new_stone_coordinates = new_stone_coordinates_prev + new_stone_coordinates
-                    
+
+                               
                     # Agent checks if this route's future global map state has been assessed previously. 
                     globalMapPoints = self.checkDeepMapValues(start, goal, new_stone_coordinates, items)
 
@@ -397,12 +398,8 @@ class Agent:
                     return 10000000000000
             
             current_globalMapPoints += max_deepMapPoints + self.visibleItemsPts[obstacle]
-        
-        #End current search layer  if it is less than previously search layer points
-        if current_globalMapPoints >= self.max_layer_points[search_level]:
-            self.max_layer_points[search_level] = current_globalMapPoints
-        else:
-            return -10000
+ 
+
             
         return current_globalMapPoints  
 
@@ -430,7 +427,7 @@ class Agent:
             
             # Water is given negative points if the agent has no raft, no stones and is not on a raft
             if obstacle == '~' and self.items['r'] < 1 and self.items['o'] < 1 and (self.onRaft == 0):
-                self.top_global_map_points[x][y] = -5000
+                self.top_global_map_points[x][y] = -500000000
                 continue
             
             # astar path is generated from the agents current position to the coordinate
@@ -536,14 +533,14 @@ class Agent:
                             if onRaft:
                                 points += 0.2
                             else:
-                                points += 0.5
+                                points += 1
                         if surrounding_obstacle == '~':
                             points += 0.2
             return points
         #Points setup for water. Dependent on surrounding unknown space (?), water and current items/raft
         elif obstacle == '~': # values exploring the water depending on whether agent is currently on a raft
             points = 0
-            if (items['o'] < 2 and items['r'] < 1) and onRaft == 0:
+            if (items['o'] < 1 and items['r'] < 1) and onRaft == 0:
                 return 0
             for x_1 in range(-2,3):
                 for y_2 in range(-2,3):
@@ -553,7 +550,7 @@ class Agent:
                             if onRaft:
                                 points += 1.5
                             else:
-                                points += 0.3
+                                points += 0.5
             return points
         #Points setup for treasure. Agent only goes for treasure if it can plot a path home
         elif obstacle == '$':
@@ -699,7 +696,6 @@ class Agent:
                     self.items[nextElement] += 1
                     self.update_global_values_flag = 1
                 
-                #needs to be reviewed...
                 if nextElement == '~':
                     if self.items['o'] > 0:
                         self.items['o'] -= 1
@@ -711,13 +707,11 @@ class Agent:
                             self.items['r'] = self.items['r'] - 1
                             self.onRaft = 1
                             self.onLand = 0
-                            print("on a raft")
+                            #print("on a raft")
                             self.update_global_values_flag = 1
-                        else:
-                            print("Error: no raft in inventory")
 
-                    elif self.onRaft == 0:
-                        print("Error: Raft not available")
+                    #elif self.onRaft == 0:
+                    #    print("Error: Raft not available")
                         
                 elif nextElement == ' ':
                     if self.onRaft:
@@ -793,13 +787,17 @@ class Agent:
 
             if self.actionQueue.empty():                       
                 refreshvalues_flag += 1
+                #self.print_large_matrix(self.global_map_obstacles, 160)
+
                 self.updateDistance()
                 if self.update_global_values_flag or refreshvalues_flag > 1:   # Update coordinate values every 2 moves. Immediate update is required during certain conditions
                     self.update_top_global_points()
                     refreshvalues_flag = 0
 
+
                 nextPosition = self.decideNextPosition()                       
                 bestRoute = self.decideBestRoute(nextPosition)
+
                 self.agentController(bestRoute)                         #Converts route into game actions. Game actions are added into the actionQueue
             
             if not self.actionQueue.empty():
