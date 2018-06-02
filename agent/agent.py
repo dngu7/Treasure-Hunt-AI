@@ -1,3 +1,4 @@
+
 #!/usr/bin/python3.6
 
 
@@ -20,7 +21,6 @@
 #  4. Yens-Astar Multiple Path Search        > Generates multiple paths using various stone placement combinations
 #  5. Decision Trees with pruning            > Assessment of multiple paths using future global map states using object Score system (deep search)
 #  6. Deep Global Map Scores Memory          > Stores deep searched global map Scores to avoid repeitive decision trees
-
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 #  Agent Design: 
@@ -307,6 +307,7 @@ class Agent:
         
         # Limits the level of deep search to avoid long calculation times. 
         search_level = search_level + 1
+         # if search level exceeded, just return 0 as a value.
         if search_level > self.deep_search_limit: return 0
 
         # Setup Variables

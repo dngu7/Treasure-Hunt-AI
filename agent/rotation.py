@@ -1,11 +1,17 @@
 #!/usr/bin/python3.6
 
-# Rotation function rotates a given matrix based in the degree provided
-# In the agent, it is used to rotate the provided matrix from the game and convert it to 0 degrees (upward). 
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# Acknowledgement
+# Resource: https://stackoverflow.com/questions/8372399/zip-with-list-output-instead-of-tuple
+# - resource used are: rotate and printMatrix
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
 
 
-from pprint import pprint
-
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# rotate function
+# Rotation function rotates a given array matrix based in the degree provided
+# Degree has to be one of 0, 90, 180, 270, 360
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
 def rotate(matrix, degree):
     if abs(degree) not in [0, 90, 180, 270, 360]:
         # raise error or just return nothing or original
@@ -23,3 +29,4 @@ def rotate(matrix, degree):
         matrix = rotate(matrix, degree+90)    
     return matrix
     
+
