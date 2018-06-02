@@ -88,9 +88,9 @@ class Agent:
         self.theFinalPath = []
 
     #------------------------------------------------------------------------------------#
-    # checkDeepMapValues()
-    # This function checks if future global map state Scores have already been calculated 
-    #  and saved in self.deep_global_map_scores 
+    # checkDeepMapValues()                                                               #
+    # This function checks if future global map state Scores have already been           #
+    # calculated and saved in self.deep_global_map_scores                                #
     #------------------------------------------------------------------------------------#
     def checkDeepMapValues(self, start, goal, stoneLocation, currentItems):
         x = start[0]
@@ -108,9 +108,9 @@ class Agent:
         return 0
 
     #------------------------------------------------------------------------------------#
-    # addDeepMapValues()
-    # This function adds future global map state Scores to self.deep_global_map_scores 
-    #  in order to avoid repeitive calculations. 
+    # addDeepMapValues()                                                                 #
+    # This function adds future global map state Scores to self.deep_global_map_scores   #
+    #  in order to avoid repeitive calculations.                                         #
     #------------------------------------------------------------------------------------#           
     def addDeepMapValues(self, start, goal, stoneLocation, currentItems, deepMapValue):
         x = start[0]
@@ -129,9 +129,10 @@ class Agent:
         self.deep_global_map_scores[x][y][goal][stoneLocation][currentItems] = deepMapValue
 
     #------------------------------------------------------------------------------------#
-    # decideNextPosition()
-    # This function returns the next position for the agent by finding visible coordinate with the highest Scores stored
-    # If the agent holds the treasure and a route home is feasible, then it immediately goes to [80,80]
+    # decideNextPosition()                                                               #
+    # This function returns the next position for the agent by finding visible           #
+    # coordinate with the highest Scores stored.I f the agent holds the treasure and a   #
+    # route homeis feasible, then it immediately goes to [80,80]                         #
     #------------------------------------------------------------------------------------#                
     def decideNextPosition(self):
         nextPositions = [[80,80]]
@@ -163,8 +164,8 @@ class Agent:
         return nextPositions
     
     #------------------------------------------------------------------------------------#
-    # decideRouteHomefromTreasure()
-    # This function checks if there is a path home from the current starting position
+    # decideRouteHomefromTreasure()                                                      #
+    # This function checks if there is a path home from the current starting position    #
     #------------------------------------------------------------------------------------#
     def decideRouteHomefromTreasure(self,starting_coordinate):
         astarresult = self.astarMinimum(self.AstarGlobalMap,starting_coordinate, self.home, self.items, 0)
@@ -172,8 +173,8 @@ class Agent:
             return 1
         return 0     
     #------------------------------------------------------------------------------------#
-    # checkRouteHome()
-    # This function checks if there is a path home from the current starting position
+    # checkRouteHome()                                                                   #
+    # This function checks if there is a path home from the current starting position    #
     #------------------------------------------------------------------------------------#
     def checkRouteHome(self, starting_coordinate, treasure_coordinate):
         # Calculates the route to the treasure using the starting and treasure coordinates
@@ -196,9 +197,9 @@ class Agent:
             return 1
     
     #------------------------------------------------------------------------------------#
-    # astarMinimum()
-    # Generates a path using AStar Search with the least number of stones possible. 
-    # This function prioritizes usage of the stones over the raft.
+    # astarMinimum()                                                                     #
+    # Generates a path using AStar Search with the least number of stones possible.      #
+    # This function prioritizes usage of the stones over the raft.                       #
     #------------------------------------------------------------------------------------#
     def astarMinimum(self, AstarMap, position, goal, items, onRaft):
         totalStoneCount = items['o']
@@ -221,9 +222,9 @@ class Agent:
         return astarItems(AstarMap, position, goal, starting_item_list, onRaft, [])
 
     #------------------------------------------------------------------------------------#
-    # decideBestRoute()
-    # This function creates the best route to a goal(coordinate) using a modified 
-    # yen algorithm/astar heuristic search and a decision tree.
+    # decideBestRoute()                                                                  #
+    # This function creates the best route to a goal(coordinate) using a modified        #
+    # yen algorithm/astar heuristic search and a decision tree.                          #
     #------------------------------------------------------------------------------------#
     def decideBestRoute(self, goal_list):
         #self.max_layer_scores = [0] * (self.deep_search_limit + 1)
@@ -299,9 +300,9 @@ class Agent:
         return best_goal_route
 
     #------------------------------------------------------------------------------------#
-    # deepSearch_globalMapScores
-    # This function calculates the total global map Scores of a position using future states 
-    # based on all possible routes takeen to all visible coordinates 
+    # deepSearch_globalMapScores                                                         #
+    # This function calculates the total global map Scores of a position using future    # 
+    # states based on all possible routes takeen to all visible coordinates              #
     #------------------------------------------------------------------------------------#
     def deepSearch_globalMapScores(self, DS_AstarMap, globalmap, visibleItems, start, items, raftstate, search_level, new_stone_coordinates):
         
@@ -410,8 +411,8 @@ class Agent:
             self.global_map_distance[coordinate[0]][coordinate[1]] = int(manhattan(self.position, coordinate))
 
     #------------------------------------------------------------------------------------#
-    # update_top_global_scores
-    # Updates the top_global_map_scores memory for all visible and unexplored coordinates
+    # update_top_global_scores                                                           #
+    # Updates the top_global_map_scores memory for all visible and unexplored coordinates#
     #------------------------------------------------------------------------------------#
     def update_top_global_scores(self):
         
@@ -452,12 +453,14 @@ class Agent:
         self.update_global_values_flag = 0
 
     #------------------------------------------------------------------------------------#
-    # calculateTotalCoordScores: Calculates the TOTAL Scores for a coordinate 
-    #  
-    # All coordinates are assigned Scores based on its reachability (reachScores) and importance to the agent (coordScores)
-    # Reachability is determine using whether astar search can generate a path with/without any items.
-    # Coordinates that do not require items are higher in value/priority 
-    # Importance to the agent is calculated in the calculateCoordScores() function below. 
+    # calculateTotalCoordScores: Calculates the TOTAL Scores for a coordinate            #
+    #                                                                                    #
+    # All coordinates are assigned Scores based on its reachability (reachScores)        #
+    # and importance to the agent (coordScores).                                         #
+    # Reachability is determine using whether astar search can generate a path           #
+    # with/without any items.                                                            #
+    # Coordinates that do not require items are higher in value/priority                 #
+    # Importance to the agent is calculated in the calculateCoordScores() function below.#
     #------------------------------------------------------------------------------------#
     
     def calculateTotalCoordScores(self, x, y, astar_memory, global_map, onRaft, items, position):
@@ -490,9 +493,9 @@ class Agent:
         return totalScores, remove_flag, reachScores, coordScores
 
     #------------------------------------------------------------------------------------#
-    # calculateCoordScores: Calculates the coordinate Scores for a given coordinate 
-    #  
-    # Below is the Score setup for each coordinate type (land, water, item)
+    # calculateCoordScores:                                                              #
+    # Calculates the coordinate Scores for a given coordinate                            # 
+    # Below is the Score setup for each coordinate type (land, water, item)              #
     #------------------------------------------------------------------------------------#
     
     def calculateCoordScores(self, coordinate, global_map, onRaft, items, position): # assigns Scores to each coordinate on the global map
@@ -561,8 +564,8 @@ class Agent:
         return 0
 
     #------------------------------------------------------------------------------------#
-    # update_global_map_obstacles()
-    #  Updates the global_map_obstacles using the map received from the TCP Socket
+    # update_global_map_obstacles()                                                      #
+    #  Updates the global_map_obstacles using the map received from the TCP Socket       #
     #------------------------------------------------------------------------------------#
     
     def update_global_map_obstacles(self):
@@ -627,9 +630,9 @@ class Agent:
             self.AstarGlobalMap.updateGrid(self.global_map_obstacles, self.onRaft)
 
     #------------------------------------------------------------------------------------#
-    # agentController: 
-    # Converts a list of positions into keyboard actions for the agent 
-    # These actions are queued in actionQueue and pushed into the game one at a time 
+    # agentController:                                                                   #
+    # Converts a list of positions into keyboard actions for the agent                   #
+    # These actions are queued in actionQueue and pushed into the game one at a time     #
     #------------------------------------------------------------------------------------#
     def agentController(self, positionList): ## Missing implementation for unlock and cut
         requiredItems = {'-' : 'k', 'T' : 'a'}
@@ -669,9 +672,9 @@ class Agent:
             currentDir = newDirection
     
     #------------------------------------------------------------------------------------#
-    # move_agent: 
-    # Takes the actions and updates the agent's position and direction to ensure it 
-    # aligns with the current game
+    # move_agent:                                                                        #
+    # Takes the actions and updates the agent's position and direction to ensure it      #
+    # aligns with the current game                                                       #
     #------------------------------------------------------------------------------------#
     def move_agent(self, action):
         blocks = ['T','*','-','.']
