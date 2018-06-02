@@ -1,5 +1,4 @@
-#!/usr/bin/python
-from pprint import pprint
+#!/usr/bin/python3.6
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 # Acknowledgement
@@ -9,9 +8,9 @@ from pprint import pprint
 
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
-# rotate
-# function to rotate array matrix
-# degree has to be one of 0, 90, 180, 270, 360
+# rotate function
+# Rotation function rotates a given array matrix based in the degree provided
+# Degree has to be one of 0, 90, 180, 270, 360
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 def rotate(matrix, degree):
     if abs(degree) not in [0, 90, 180, 270, 360]:
@@ -27,20 +26,7 @@ def rotate(matrix, degree):
     else:
         z = zip(*matrix)[::-1]
         matrix = [list(a) for a in z]
-        matrix = rotate(matrix, degree+90)
-        
-    #matrix = [list(a) for a in z]
-    
+        matrix = rotate(matrix, degree+90)    
     return matrix
     
 
-
-#---------------------------------------------------------------------------------------------------------------------------------------------------#
-# printMatrix
-# function to print array matrix
-#---------------------------------------------------------------------------------------------------------------------------------------------------# 
-def printMatrix(matrix):
-    for i in range(len(matrix)):
-            for j in range(len(matrix[i])):
-                print(matrix[i][j], end="")
-            print('')

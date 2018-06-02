@@ -1,10 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/python3.6
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 # Acknowledgement
 # Resource: https://raw.githubusercontent.com/ichinaski/astar/master/pqueue.py
 # - resource used are: PriorityQueue itself.
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
-
 
 import heapq
 import itertools

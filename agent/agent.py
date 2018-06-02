@@ -1,7 +1,11 @@
-#!/usr/bin/python
+
+#!/usr/bin/python3.6
+
+
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 # COMP 3411/9414 Artificial Intelligence
 # Project 3 (Option 1): Treasure Hunt
+# Language: Python3.6
 # Group 37
 # David Nguyen (z5154591)
 # Yong Yooshin (z3461805)
@@ -24,22 +28,19 @@
 # When the agent starts, it begins the main loop function which carries out 5 important steps. The agent stores the map received from the game
 # in a large 160x160 global map (global_map_obstacles) using the update_global_map_obstacles() function. Next, each coordinate in the map is assigned Scores 
 # based on a system which prioritizes exploration of land/water and picks up items depending on 3 factors: Reachability, item importance and
-# distance. These Scores are calculated after every move (using the calculateTotalCoordPoints function) and is saved in the top_global_map_points. 
+# distance. These Scores are calculated after every move (using the calculateTotalCoordScores function) and is saved in the top_global_map_scores. 
 # The agent uses these Scores to determine the next move using decideNextPosition() function. 
 # With the new position selected, the agent uses a combination of A-Star, Yen's Algorithm and a decision tree to determine the best route to take.
 # The route is fed into the agentController function which converts a list of positions into player commands that are sent to the game socket. 
-
-# The coordinate with the highest Scores is chosen and multiple routes are created using a combination A-Star Search and Yen's Algorithm.
-# The agent decides between different routes by calculating the total Scores of future global map states Scores. It carries this out by generating 
-# temporary maps with the new stone placements and generates paths to all visible items using path search described above. 
+#
+# The agent decides between different routes for the next move by calculating the total Scores of future global map states Scores. It carries this 
+# out by generating temporary maps with the new stone placements and generates paths to all visible items using path search described above. 
 # This process continues to deepen the decision tree and explores all possible outcomes until all items are unreachable. 
 # The path that generates the highest Scores based on its future states are returned and executed by the agent. 
 # Memory and pruning have also been implemented to optimize the decision tree calculation speed. As the agent generates future global map states, it saves
-# its values in memory (deep_global_map_points) to avoid repeitive calculations in the future. When a path is found from the agent's current position 
+# its values in memory (deep_global_map_scores) to avoid repeitive calculations in the future. When a path is found from the agent's current position 
 # to the treasure and then home, then the agent executes the entire "final" path immediately. This "final path" pruning saves the agent significant 
 # time as it only needs to calculate the final winning path once. 
-
-
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 
 import sys
@@ -65,8 +66,8 @@ class Agent:
         self.global_map_size = 160
         self.global_map_obstacles = [['?'] * self.global_map_size for i in range(self.global_map_size)]
         self.global_map_distance = [[0] * self.global_map_size for i in range(self.global_map_size)]
-        self.top_global_map_points = [[0] * self.global_map_size for i in range(self.global_map_size)]
-        self.deep_global_map_points = [[{}] * self.global_map_size for i in range(self.global_map_size)]
+        self.top_global_map_scores = [[0] * self.global_map_size for i in range(self.global_map_size)]
+        self.deep_global_map_scores = [[{}] * self.global_map_size for i in range(self.global_map_size)]
         self.AstarGlobalMap = AstarMap(self.global_map_obstacles)
         self.items = {'k' : 0, 'o' : 0, 'a' : 0, 'r' : 0, '$' : 0}
         self.visibleItemsPts = {'k' : 100, 'o' : 100, 'a' : 100, 'T' : 100, '$' : 10000}
@@ -82,14 +83,14 @@ class Agent:
         self.visibleItems = []
         self.exploredCoordinates = [[80,80]]
         self.deep_search_limit = 20
-        self.max_layer_points = [0] * (self.deep_search_limit + 1)
+        self.max_layer_scores = [0] * (self.deep_search_limit + 1)
         self.update_global_values_flag = 1
         self.theFinalPath = []
 
     #------------------------------------------------------------------------------------#
     # checkDeepMapValues()
     # This function checks if future global map state Scores have already been calculated 
-    #  and saved in self.deep_global_map_points 
+    #  and saved in self.deep_global_map_scores 
     #------------------------------------------------------------------------------------#
     def checkDeepMapValues(self, start, goal, stoneLocation, currentItems):
         x = start[0]
@@ -99,16 +100,16 @@ class Agent:
         stoneLocation = str(stoneLocation)
         currentItems = str(currentItems)
 
-        if goal in self.deep_global_map_points[x][y]:
-            if stoneLocation in self.deep_global_map_points[x][y][goal]:
-                if currentItems in self.deep_global_map_points[x][y][goal][stoneLocation]:
-                    deepMapValue = self.deep_global_map_points[x][y][goal][stoneLocation][currentItems]
+        if goal in self.deep_global_map_scores[x][y]:
+            if stoneLocation in self.deep_global_map_scores[x][y][goal]:
+                if currentItems in self.deep_global_map_scores[x][y][goal][stoneLocation]:
+                    deepMapValue = self.deep_global_map_scores[x][y][goal][stoneLocation][currentItems]
                     return deepMapValue
         return 0
 
     #------------------------------------------------------------------------------------#
     # addDeepMapValues()
-    # This function adds future global map state Scores to self.deep_global_map_points 
+    # This function adds future global map state Scores to self.deep_global_map_scores 
     #  in order to avoid repeitive calculations. 
     #------------------------------------------------------------------------------------#           
     def addDeepMapValues(self, start, goal, stoneLocation, currentItems, deepMapValue):
@@ -121,11 +122,11 @@ class Agent:
         if deepMapValue == 0:
             deepMapValue = 1
 
-        if goal not in self.deep_global_map_points[x][y]:
-            self.deep_global_map_points[x][y][goal] = {}
-        if stoneLocation not in self.deep_global_map_points[x][y][goal]:
-            self.deep_global_map_points[x][y][goal][stoneLocation] = {}
-        self.deep_global_map_points[x][y][goal][stoneLocation][currentItems] = deepMapValue
+        if goal not in self.deep_global_map_scores[x][y]:
+            self.deep_global_map_scores[x][y][goal] = {}
+        if stoneLocation not in self.deep_global_map_scores[x][y][goal]:
+            self.deep_global_map_scores[x][y][goal][stoneLocation] = {}
+        self.deep_global_map_scores[x][y][goal][stoneLocation][currentItems] = deepMapValue
 
     #------------------------------------------------------------------------------------#
     # decideNextPosition()
@@ -134,8 +135,8 @@ class Agent:
     #------------------------------------------------------------------------------------#                
     def decideNextPosition(self):
         nextPositions = [[80,80]]
-        maxpoints = -1000
-        maxcoordPoint = -1000
+        maxscores = -1000
+        maxcoordScore = -1000
         goal_list = []
         
 
@@ -147,16 +148,16 @@ class Agent:
         for coordinate in self.visibleCoordinates:
             i = coordinate[0]
             j = coordinate[1]
-            coordPoints = self.top_global_map_points[i][j]
-            distancePoints = self.global_map_distance[i][j] * 0.1
-            totalPoints = coordPoints - distancePoints
+            coordScores = self.top_global_map_scores[i][j]
+            distanceScores = self.global_map_distance[i][j] * 0.1
+            totalScores = coordScores - distanceScores
             obstacle = self.global_map_obstacles[i][j]
-            if totalPoints > maxpoints:
-                maxpoints = totalPoints
+            if totalScores > maxscores:
+                maxscores = totalScores
                 nextPositions = [[i,j]]
                 nextObstacle = obstacle
-                maxcoordPoint = coordPoints
-            elif maxcoordPoint == coordPoints and nextObstacle in self.visibleItemsPts and nextObstacle == obstacle:
+                maxcoordScore = coordScores
+            elif maxcoordScore == coordScores and nextObstacle in self.visibleItemsPts and nextObstacle == obstacle:
                 nextPositions.append([i,j])
 
         return nextPositions
@@ -225,8 +226,8 @@ class Agent:
     # yen algorithm/astar heuristic search and a decision tree.
     #------------------------------------------------------------------------------------#
     def decideBestRoute(self, goal_list):
-        #self.max_layer_points = [0] * (self.deep_search_limit + 1)
-        best_goal_points = 0
+        #self.max_layer_scores = [0] * (self.deep_search_limit + 1)
+        best_goal_scores = 0
         best_goal_route = []
         for goal in goal_list:
             #Generates a simple path using Astar Search
@@ -247,7 +248,7 @@ class Agent:
             #Setup copies of the global maps to use in generating the decision tree
             starting_globalmap = copy.deepcopy(self.global_map_obstacles)
             starting_visibleItems = self.visibleItems.copy()
-            max_deepMapPoints = 0
+            max_deepMapScores = 0
 
             # Loop through all routes to decide the best route to take using future global map states
             for routeNb, someRoute in enumerate(aStarMultiPath_List):
@@ -262,47 +263,47 @@ class Agent:
                 new_stone_coordinates = self.placedStonesCoordinates + someRoute[4]
 
                 # Agent checks if this route's future global map state has been assessed previously. 
-                globalMapPoints = self.checkDeepMapValues(self.position, goal, new_stone_coordinates, self.items)
+                globalMapScores = self.checkDeepMapValues(self.position, goal, new_stone_coordinates, self.items)
 
                 #If the route's global map state hasn't been found, then generate a temporary map with the new stone locations created on the new route. 
-                if globalMapPoints == 0:
+                if globalMapScores == 0:
                     for i in new_stone_coordinates:
                         temp_globalmap[i[0]][i[1]] = ' '
                     temp_AstarMap = AstarMap(temp_globalmap)
             
                     #Calculate the value of the route's future global map state if the route was executed
-                    globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, temp_visibleItems, goal, new_items, new_raftstate, search_level, new_stone_coordinates)
-                    if globalMapPoints < 0:
+                    globalMapScores = self.deepSearch_globalMapScores(temp_AstarMap, temp_globalmap, temp_visibleItems, goal, new_items, new_raftstate, search_level, new_stone_coordinates)
+                    if globalMapScores < 0:
                         continue
                     #Store the value of the route's future global map state 
-                    self.addDeepMapValues(self.position, goal, new_stone_coordinates, self.items, globalMapPoints)
+                    self.addDeepMapValues(self.position, goal, new_stone_coordinates, self.items, globalMapScores)
                     
 
                 #The best route will have the highest global map Scores. This path is saved. 
-                if globalMapPoints > max_deepMapPoints:
-                    max_deepMapPoints = globalMapPoints
+                if globalMapScores > max_deepMapScores:
+                    max_deepMapScores = globalMapScores
                     bestRoute = someRoute[0].copy()
                     bestRouteStones = new_stone_coordinates.copy()
                     
                     #The winning path was found so the entire search is stopped and this path is prioritized
-                    if max_deepMapPoints > 100000:
+                    if max_deepMapScores > 100000:
                         self.theFinalPath = bestRoute + self.theFinalPath
                         break
 
             if len(self.theFinalPath) > 0:
                 return self.theFinalPath
 
-            if globalMapPoints >= best_goal_points:
-                best_goal_points = globalMapPoints
+            if globalMapScores >= best_goal_scores:
+                best_goal_scores = globalMapScores
                 best_goal_route = bestRoute.copy()
         return best_goal_route
 
     #------------------------------------------------------------------------------------#
-    # deepSearch_globalMapPoints
+    # deepSearch_globalMapScores
     # This function calculates the total global map Scores of a position using future states 
     # based on all possible routes takeen to all visible coordinates 
     #------------------------------------------------------------------------------------#
-    def deepSearch_globalMapPoints(self, DS_AstarMap, globalmap, visibleItems, start, items, raftstate, search_level, new_stone_coordinates):
+    def deepSearch_globalMapScores(self, DS_AstarMap, globalmap, visibleItems, start, items, raftstate, search_level, new_stone_coordinates):
         
         # Limits the level of deep search to avoid long calculation times. 
         search_level = search_level + 1
@@ -310,7 +311,7 @@ class Agent:
         if search_level > self.deep_search_limit: return 0
 
         # Setup Variables
-        current_globalMapPoints = 0
+        current_globalMapScores = 0
         bestRouteStones = []
         bestRoute = []
         best_astar_path = []
@@ -318,7 +319,7 @@ class Agent:
 
         # Loops through all visible items and adds the total coordinate Scores for each. 
         for goal in visibleItems:
-            max_deepMapPoints = 0
+            max_deepMapScores = 0
             obstacle = globalmap[goal[0]][goal[1]]
 
             #Build shortest path
@@ -347,7 +348,7 @@ class Agent:
                     
                     #Setup Variables for someRoute (Someroute is the current route being assessed using a Score system)
                     new_items, new_raftstate, new_stone_coordinates = someRoute[2], someRoute[3], someRoute[4]
-                    globalMapPoints = 0
+                    globalMapScores = 0
 
                     #create a new map and visible items list
                     temp_globalmap = copy.deepcopy(starting_globalmap)
@@ -358,9 +359,9 @@ class Agent:
 
                                
                     # Agent checks if this route's future global map state has been assessed previously. 
-                    globalMapPoints = self.checkDeepMapValues(start, goal, new_stone_coordinates, items)
+                    globalMapScores = self.checkDeepMapValues(start, goal, new_stone_coordinates, items)
 
-                    if globalMapPoints == 0:
+                    if globalMapScores == 0:
                         #build new map with new updated stone coordinates
                         for i in new_stone_coordinates:
                             temp_globalmap[i[0]][i[1]] = ' '
@@ -368,22 +369,22 @@ class Agent:
 
                         #Calculate map Scores as if this route was excuted by the agent
                         #Begins deepsearch to determine best route based on the new map states. 
-                        globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, starting_visibleItems, goal, new_items, new_raftstate, search_level, new_stone_coordinates)                 
-                        if globalMapPoints < 0:
+                        globalMapScores = self.deepSearch_globalMapScores(temp_AstarMap, temp_globalmap, starting_visibleItems, goal, new_items, new_raftstate, search_level, new_stone_coordinates)                 
+                        if globalMapScores < 0:
                             return -10000
                         #Store the value of the route's future global map state 
-                        self.addDeepMapValues(start, goal, new_stone_coordinates, items, globalMapPoints)
+                        self.addDeepMapValues(start, goal, new_stone_coordinates, items, globalMapScores)
 
                     #Compares map Scores to best route. Saves if new route provides better future state Scores.  
-                    if globalMapPoints >= max_deepMapPoints:
-                        max_deepMapPoints = globalMapPoints
+                    if globalMapScores >= max_deepMapScores:
+                        max_deepMapScores = globalMapScores
                         bestRoute = copy.deepcopy(someRoute[0])
                         bestRouteStones = new_stone_coordinates.copy()
 
                         #End the search if the final path to the treasure and home is found. 
-                        if globalMapPoints > 100000:
+                        if globalMapScores > 100000:
                             self.theFinalPath = bestRoute[1:] + self.theFinalPath
-                            return globalMapPoints
+                            return globalMapScores
                                           
             else:
                 bestRoute = currRoute.copy()
@@ -398,11 +399,11 @@ class Agent:
                     self.theFinalPath = bestRoute[1:]
                     return 10000000000000
             
-            current_globalMapPoints += max_deepMapPoints + self.visibleItemsPts[obstacle]
+            current_globalMapScores += max_deepMapScores + self.visibleItemsPts[obstacle]
  
 
             
-        return current_globalMapPoints  
+        return current_globalMapScores  
 
 
     def updateDistance(self):
@@ -410,10 +411,10 @@ class Agent:
             self.global_map_distance[coordinate[0]][coordinate[1]] = int(manhattan(self.position, coordinate))
 
     #------------------------------------------------------------------------------------#
-    # update_top_global_points
-    # Updates the top_global_map_points memory for all visible and unexplored coordinates
+    # update_top_global_scores
+    # Updates the top_global_map_scores memory for all visible and unexplored coordinates
     #------------------------------------------------------------------------------------#
-    def update_top_global_points(self):
+    def update_top_global_scores(self):
         
         removecoordinatesList = []
         
@@ -428,7 +429,7 @@ class Agent:
             
             # Water is given negative Scores if the agent has no raft, no stones and is not on a raft
             if obstacle == '~' and self.items['r'] < 1 and self.items['o'] < 1 and (self.onRaft == 0):
-                self.top_global_map_points[x][y] = -500000000
+                self.top_global_map_scores[x][y] = -500000000
                 continue
             
             # astar path is generated from the agents current position to the coordinate
@@ -436,66 +437,66 @@ class Agent:
             placed_stone_list = astar_memory[4]
 
             # These are sent to the the calculateTotalCoord Function below. 
-            totalPoints, remove_flag, reachPoints, coordPoints = self.calculateTotalCoordPoints(x, y, astar_memory, self.global_map_obstacles, self.onRaft, self.items, self.position)
+            totalScores, remove_flag, reachScores, coordScores = self.calculateTotalCoordScores(x, y, astar_memory, self.global_map_obstacles, self.onRaft, self.items, self.position)
 
             # Save Scores for the coordinate
-            self.top_global_map_points[x][y] = totalPoints
+            self.top_global_map_scores[x][y] = totalScores
 
             if remove_flag:
                 removecoordinatesList.append([x,y])
 
-        #remove coordinate from visible list if deemed by the calculateTotalCoordPoints function
+        #remove coordinate from visible list if deemed by the calculateTotalCoordScores function
         for coordinate in removecoordinatesList: 
             self.visibleCoordinates.remove(coordinate)
             self.exploredCoordinates.append(coordinate)
-            self.top_global_map_points[coordinate[0]][coordinate[1]] = -10003
+            self.top_global_map_scores[coordinate[0]][coordinate[1]] = -10003
         self.update_global_values_flag = 0
 
     #------------------------------------------------------------------------------------#
-    # calculateTotalCoordPoints: Calculates the TOTAL Scores for a coordinate 
+    # calculateTotalCoordScores: Calculates the TOTAL Scores for a coordinate 
     #  
-    # All coordinates are assigned Scores based on its reachability (reachPoints) and importance to the agent (coordPoints)
+    # All coordinates are assigned Scores based on its reachability (reachScores) and importance to the agent (coordScores)
     # Reachability is determine using whether astar search can generate a path with/without any items.
     # Coordinates that do not require items are higher in value/priority 
-    # Importance to the agent is calculated in the calculateCoordPoints() function below. 
+    # Importance to the agent is calculated in the calculateCoordScores() function below. 
     #------------------------------------------------------------------------------------#
     
-    def calculateTotalCoordPoints(self, x, y, astar_memory, global_map, onRaft, items, position):
+    def calculateTotalCoordScores(self, x, y, astar_memory, global_map, onRaft, items, position):
         remove_flag = 0
         obstacle = global_map[x][y]
-        reachPoints, coordPoints = 0, 0
+        reachScores, coordScores = 0, 0
 
         #Door, agent and boundaries are ignored
         if (obstacle == '*') or (obstacle == '^') or (obstacle == '.'):
             return 0,1,0,0
         
-        #reachPoints depedent on two factors: Reachable with/without items. 
+        #reachScores depedent on two factors: Reachable with/without items. 
         if len(astar_memory[0]) > 0: #Path of length zero means coordinate is not reachable
             if astar_memory[1]: #if list is empty, then it requires no items. This gives it 50 Scores. 
-                reachPoints = 10
+                reachScores = 10
             else:
-                reachPoints = 50
-            coordPoints = self.calculateCoordPoints([x,y],global_map, onRaft, items, position) #Calculates coordinate Scores using function
-            totalPoints = reachPoints + coordPoints
+                reachScores = 50
+            coordScores = self.calculateCoordScores([x,y],global_map, onRaft, items, position) #Calculates coordinate Scores using function
+            totalScores = reachScores + coordScores
         else:
             #print('{},{} is not reachable'.format(x,y))
-            totalPoints = -10002
+            totalScores = -10002
 
         #Land ignored if it doesnt exceed threshold
-        if (obstacle == ' ') and coordPoints < 2.6 and reachPoints > 1:
-            #print('Removed: {} Reason: not enough coordpoints ({})'.format([x,y], coordPoints))
+        if (obstacle == ' ') and coordScores < 2.6 and reachScores > 1:
+            #print('Removed: {} Reason: not enough coordscores ({})'.format([x,y], coordScores))
             remove_flag = 1
-            totalPoints = 0
+            totalScores = 0
                 
-        return totalPoints, remove_flag, reachPoints, coordPoints
+        return totalScores, remove_flag, reachScores, coordScores
 
     #------------------------------------------------------------------------------------#
-    # calculateCoordPoints: Calculates the coordinate Scores for a given coordinate 
+    # calculateCoordScores: Calculates the coordinate Scores for a given coordinate 
     #  
     # Below is the Score setup for each coordinate type (land, water, item)
     #------------------------------------------------------------------------------------#
     
-    def calculateCoordPoints(self, coordinate, global_map, onRaft, items, position): # assigns Scores to each coordinate on the global map
+    def calculateCoordScores(self, coordinate, global_map, onRaft, items, position): # assigns Scores to each coordinate on the global map
         x = coordinate[0]
         y = coordinate[1]
         obstacle = global_map[x][y]
@@ -600,7 +601,7 @@ class Agent:
                             self.global_map_obstacles[Iidx][Jidx] = element
                 elif (i == 2 and j == 2):
                     self.global_map_obstacles[Iidx][Jidx] = '^'
-                    self.top_global_map_points[Iidx][Jidx] = -10000
+                    self.top_global_map_scores[Iidx][Jidx] = -10000
 
                     if [Iidx, Jidx] not in self.exploredCoordinates:
                         self.exploredCoordinates.append([Iidx, Jidx])
@@ -614,14 +615,14 @@ class Agent:
                         self.visibleItems.append([Iidx,Jidx])
 
                     astar_path = self.astarMinimum(self.AstarGlobalMap,self.position, [Iidx, Jidx], self.items, self.onRaft)
-                    totalPoints, remove_flag, reachPoints, coordPoints = self.calculateTotalCoordPoints(Iidx, Jidx, astar_path, self.global_map_obstacles, self.onRaft, self.items, self.position)
+                    totalScores, remove_flag, reachScores, coordScores = self.calculateTotalCoordScores(Iidx, Jidx, astar_path, self.global_map_obstacles, self.onRaft, self.items, self.position)
 
                     if remove_flag:
-                        self.top_global_map_points[Iidx][Jidx] = 0
+                        self.top_global_map_scores[Iidx][Jidx] = 0
                         self.exploredCoordinates.append([Iidx, Jidx])
                         remove_flag = 0
                     else:
-                        self.top_global_map_points[Iidx][Jidx] = totalPoints
+                        self.top_global_map_scores[Iidx][Jidx] = totalScores
                         self.visibleCoordinates.append([Iidx, Jidx])
                 
             self.AstarGlobalMap.updateGrid(self.global_map_obstacles, self.onRaft)
@@ -683,6 +684,7 @@ class Agent:
             self.direction = (self.direction - 90) % 360
         elif action == 'F' or action == 'f':
             
+            #Saves coordinates that have been explored and removes them from visible coordinates to prevent looping
             if self.position not in self.exploredCoordinates:
                 self.exploredCoordinates.append(self.position)
             if self.position in self.visibleCoordinates:
@@ -692,11 +694,13 @@ class Agent:
                 prevElement = self.global_map_obstacles[self.position[0]][self.position[1]]
                 self.position = next_position
                 nextElement = self.global_map_obstacles[next_position[0]][next_position[1]]
-            
+
+                #Update items list if items found
                 if nextElement in self.items:
                     self.items[nextElement] += 1
                     self.update_global_values_flag = 1
                 
+                # reduce stones/raft if agent steps on water
                 if nextElement == '~':
                     if self.items['o'] > 0:
                         self.items['o'] -= 1
@@ -711,22 +715,20 @@ class Agent:
                             #print("on a raft")
                             self.update_global_values_flag = 1
 
-                    #elif self.onRaft == 0:
-                    #    print("Error: Raft not available")
-                        
+                #confirm agent is on land. 
                 elif nextElement == ' ':
                     if self.onRaft:
                         self.update_global_values_flag = 1
                     self.onRaft = 0
                     self.onLand = 1
-                    
+        #add raft to items if tree is cut
         elif (action == 'C' or action == 'c'):
             tree = self.global_map_obstacles[next_position[0]][next_position[1]]
             if tree == 'T' and self.items['a'] > 0:
                 self.items['r'] += 1
                 self.update_global_values_flag = 1
             
-
+    #updates position depending on the direction of the agent's movement (front position)
     def give_front_position(self, starting_position):
         new_position = starting_position.copy()
         if self.direction == 0:
@@ -788,23 +790,21 @@ class Agent:
 
             if self.actionQueue.empty():                       
                 refreshvalues_flag += 1
-                #self.print_large_matrix(self.global_map_obstacles, 160)
 
                 self.updateDistance()
                 if self.update_global_values_flag or refreshvalues_flag > 1:   # Update coordinate values every 2 moves. Immediate update is required during certain conditions
-                    self.update_top_global_points()
+                    self.update_top_global_scores()
                     refreshvalues_flag = 0
 
-
-                nextPosition = self.decideNextPosition()                       
-                bestRoute = self.decideBestRoute(nextPosition)
-
+                nextPosition = self.decideNextPosition()                #Picks next positions
+                bestRoute = self.decideBestRoute(nextPosition)          #Generates thhe best route
                 self.agentController(bestRoute)                         #Converts route into game actions. Game actions are added into the actionQueue
             
             if not self.actionQueue.empty():
                 action_list = self.actionQueue.get()
-                #print(action_list)
                 self.TCP_Socket.send_action(action_list)
+
+
 
 
 # Input: python3 agent.py -p [port_no]
@@ -817,5 +817,6 @@ new_agent = Agent(ip_address, port_no, view_size)
 new_agent.main_loop()
 
         
-
+if __name__ == '__main__':
+    Agent.__init__()
 
