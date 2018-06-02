@@ -1,5 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/python3.6
 
+# Rotation function rotates a given matrix based in the degree provided
+# In the agent, it is used to rotate the provided matrix from the game and convert it to 0 degrees (upward). 
 
 
 from pprint import pprint
@@ -18,16 +20,6 @@ def rotate(matrix, degree):
     else:
         z = zip(*matrix)[::-1]
         matrix = [list(a) for a in z]
-        matrix = rotate(matrix, degree+90)
-        
-    #matrix = [list(a) for a in z]
-    
+        matrix = rotate(matrix, degree+90)    
     return matrix
     
-# https://stackoverflow.com/questions/8372399/zip-with-list-output-instead-of-tuple
-    
-def printMatrix(matrix):
-    for i in range(len(matrix)):
-            for j in range(len(matrix[i])):
-                print(matrix[i][j], end="")
-            print('')

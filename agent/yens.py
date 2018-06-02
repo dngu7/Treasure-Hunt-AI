@@ -1,5 +1,10 @@
-# Hybrid adaption of Yens's Algorithm and Astar Search implemented for this game
+#!/usr/bin/python3.6
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# Yens.py
+# Hybrid Implementation of Yens's Algorithm and Astar Search adapted for this game
+# This adaption is a modification from the pseudocode found from the wikipedia page below (which uses Djistra's intead)
 # Source: https://en.wikipedia.org/wiki/Yen%27s_algorithm
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
 
 
 from astar import astarItems, AstarMap, astarItemsMultiPath
@@ -18,7 +23,12 @@ def converttoedges(path):
 
     return edges
 
-# Returns a list of all possible stone placement combinations and their respective shortest path from source to destination (which use those stone placements)
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+# YenAstarMultiPath
+# Takes a start and destination coordinate and returns a list of all possible stone placement combinations and their respective shortest 
+# path from source to destination (which use those stone placements)
+#---------------------------------------------------------------------------------------------------------------------------------------------------#
+
 def YenAstarMultiPath(globalmap, source, destination, itemlist, onRaft):
 
     Astar_Map = AstarMap(globalmap)

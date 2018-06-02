@@ -1,5 +1,7 @@
+#!/usr/bin/python3.6
 
 # Resource: https://raw.githubusercontent.com/ichinaski/astar/master/pqueue.py
+# Implementation of a priority queue
 
 import heapq
 import itertools
