@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Hybrid adaption of Yens's Algorithm and Astar Search implemented for this game
 # Source: https://en.wikipedia.org/wiki/Yen%27s_algorithm
 

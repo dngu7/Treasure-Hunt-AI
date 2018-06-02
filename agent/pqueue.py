@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 # Acknowledgement
 # Resource: https://raw.githubusercontent.com/ichinaski/astar/master/pqueue.py
