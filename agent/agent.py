@@ -10,36 +10,29 @@
 #  The agent uses the following algorithms and AI techniques to find the treasure and return home.                                                  
 #   
 #  Name                                      Description
-#  1. Top Global Map Memory                  > Stores local map  into global map
-#  2. Object Point System                    > Calculates points for each obstacle on the global map to decide next move.  
+#  1. Top Global Map Memory                  > Stores local map obstacles into global map
+#  2. Object Score System                    > Calculates Scores for each obstacle on the global map to decide next move.  
 #  3. A-Star Heuristic Search                > Generates the shortest path using the least number of items
 #  4. Yens-Astar Multiple Path Search        > Generates multiple paths using various stone placement combinations
-#  5. Decision Trees with pruning            > Assessment of multiple paths using future global map states using object point system (deep search)
-#  6. Deep Global Map Points Memory          > Stores deep searched global map points to avoid repeitive decision trees
-
-'''
-comments to david:
-- Can we word Scores rather than Points? Since we are playing around with coordinate system, 
-  This can be confusing to the marker.
-
-'''
+#  5. Decision Trees with pruning            > Assessment of multiple paths using future global map states using object Score system (deep search)
+#  6. Deep Global Map Scores Memory          > Stores deep searched global map Scores to avoid repeitive decision trees
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------#
 #  Agent Design: 
 #                               
 # When the agent starts, it begins the main loop function which carries out 5 important steps. The agent stores the map received from the game
-# in a large 160x160 global map (global_map_obstacles) using the update_global_map_obstacles() function. Next, each coordinate in the map is assigned points 
+# in a large 160x160 global map (global_map_obstacles) using the update_global_map_obstacles() function. Next, each coordinate in the map is assigned Scores 
 # based on a system which prioritizes exploration of land/water and picks up items depending on 3 factors: Reachability, item importance and
-# distance. These points are calculated after every move (using the calculateTotalCoordPoints function) and is saved in the top_global_map_points. 
-# The agent uses these points to determine the next move using decideNextPosition() function. 
+# distance. These Scores are calculated after every move (using the calculateTotalCoordPoints function) and is saved in the top_global_map_points. 
+# The agent uses these Scores to determine the next move using decideNextPosition() function. 
 # With the new position selected, the agent uses a combination of A-Star, Yen's Algorithm and a decision tree to determine the best route to take.
 # The route is fed into the agentController function which converts a list of positions into player commands that are sent to the game socket. 
 
-# The coordinate with the highest points is chosen and multiple routes are created using a combination A-Star Search and Yen's Algorithm.
-# The agent decides between different routes by calculating the total points of future global map states points. It carries this out by generating 
+# The coordinate with the highest Scores is chosen and multiple routes are created using a combination A-Star Search and Yen's Algorithm.
+# The agent decides between different routes by calculating the total Scores of future global map states Scores. It carries this out by generating 
 # temporary maps with the new stone placements and generates paths to all visible items using path search described above. 
 # This process continues to deepen the decision tree and explores all possible outcomes until all items are unreachable. 
-# The path that generates the highest points based on its future states are returned and executed by the agent. 
+# The path that generates the highest Scores based on its future states are returned and executed by the agent. 
 # Memory and pruning have also been implemented to optimize the decision tree calculation speed. As the agent generates future global map states, it saves
 # its values in memory (deep_global_map_points) to avoid repeitive calculations in the future. When a path is found from the agent's current position 
 # to the treasure and then home, then the agent executes the entire "final" path immediately. This "final path" pruning saves the agent significant 
@@ -94,7 +87,7 @@ class Agent:
 
     #------------------------------------------------------------------------------------#
     # checkDeepMapValues()
-    # This function checks if future global map state points have already been calculated 
+    # This function checks if future global map state Scores have already been calculated 
     #  and saved in self.deep_global_map_points 
     #------------------------------------------------------------------------------------#
     def checkDeepMapValues(self, start, goal, stoneLocation, currentItems):
@@ -114,7 +107,7 @@ class Agent:
 
     #------------------------------------------------------------------------------------#
     # addDeepMapValues()
-    # This function adds future global map state points to self.deep_global_map_points 
+    # This function adds future global map state Scores to self.deep_global_map_points 
     #  in order to avoid repeitive calculations. 
     #------------------------------------------------------------------------------------#           
     def addDeepMapValues(self, start, goal, stoneLocation, currentItems, deepMapValue):
@@ -135,13 +128,13 @@ class Agent:
 
     #------------------------------------------------------------------------------------#
     # decideNextPosition()
-    # This function returns the next position for the agent by finding visible coordinate with the highest points stored
+    # This function returns the next position for the agent by finding visible coordinate with the highest Scores stored
     # If the agent holds the treasure and a route home is feasible, then it immediately goes to [80,80]
     #------------------------------------------------------------------------------------#                
     def decideNextPosition(self):
         nextPositions = [[80,80]]
-        maxpoints = -100000
-        maxcoordPoint = -100000
+        maxpoints = -1000
+        maxcoordPoint = -1000
         goal_list = []
         
 
@@ -149,7 +142,7 @@ class Agent:
         if self.items['$'] > 0:
             if self.decideRouteHomefromTreasure(self.position):
                 return nextPositions
-        # Loops through all possible coordinates and choose the coordinate with the highest points. 
+        # Loops through all possible coordinates and choose the coordinate with the highest Scores. 
         for coordinate in self.visibleCoordinates:
             i = coordinate[0]
             j = coordinate[1]
@@ -185,13 +178,13 @@ class Agent:
         routeToTreasure = self.astarMinimum(self.AstarGlobalMap,starting_coordinate, treasure_coordinate, self.items, self.onRaft)
         # Generates list of remaining items and stone used during the routetoTreasure
         remaining_items, stone_coordinates = routeToTreasure[2],routeToTreasure[4] 
-        # Updates a temporary globalmap withh the stones used during the routetoTreasure
+        # Updates a temporary globalmap with the stones used during the routetoTreasure
         temp_globalmap_2 = copy.deepcopy(self.global_map_obstacles)
         temp_AstarMap = AstarMap(temp_globalmap_2)
         for coordinates in stone_coordinates:
             temp_globalmap_2[coordinates[0]][coordinates[1]] = ' '
 
-        # If route to treasure exists then the agent determines if thhere is a route from the treasure to home. 
+        # If route to treasure exists then the agent determines if there is a route from the treasure to home. 
         if len(routeToTreasure[0]) > 0:
             routeHome = self.astarMinimum(temp_AstarMap, treasure_coordinate, self.home, remaining_items, 0)
         else:
@@ -284,13 +277,13 @@ class Agent:
                     self.addDeepMapValues(self.position, goal, new_stone_coordinates, self.items, globalMapPoints)
                     
 
-                #The best route will have the highest global map points. This path is saved. 
+                #The best route will have the highest global map Scores. This path is saved. 
                 if globalMapPoints > max_deepMapPoints:
                     max_deepMapPoints = globalMapPoints
                     bestRoute = someRoute[0].copy()
                     bestRouteStones = new_stone_coordinates.copy()
                     
-                    #The winning pathh was found so the entire search is stopped and this path is prioritized
+                    #The winning path was found so the entire search is stopped and this path is prioritized
                     if max_deepMapPoints > 100000:
                         self.theFinalPath = bestRoute + self.theFinalPath
                         break
@@ -305,7 +298,7 @@ class Agent:
 
     #------------------------------------------------------------------------------------#
     # deepSearch_globalMapPoints
-    # This function calculates the total global map points of a position using future states 
+    # This function calculates the total global map Scores of a position using future states 
     # based on all possible routes takeen to all visible coordinates 
     #------------------------------------------------------------------------------------#
     def deepSearch_globalMapPoints(self, DS_AstarMap, globalmap, visibleItems, start, items, raftstate, search_level, new_stone_coordinates):
@@ -322,7 +315,7 @@ class Agent:
         best_astar_path = []
         new_stone_coordinates_prev = new_stone_coordinates.copy()
 
-        # Loops through all visible items and adds the total coordinate points for each. 
+        # Loops through all visible items and adds the total coordinate Scores for each. 
         for goal in visibleItems:
             max_deepMapPoints = 0
             obstacle = globalmap[goal[0]][goal[1]]
@@ -351,7 +344,7 @@ class Agent:
                 #Begin loop through each new path generated by the YenAStar
                 for routeNb, someRoute in enumerate(aStarMultiPath_List):
                     
-                    #Setup Variables for someRoute (Someroute is the current route being assessed using a point system)
+                    #Setup Variables for someRoute (Someroute is the current route being assessed using a Score system)
                     new_items, new_raftstate, new_stone_coordinates = someRoute[2], someRoute[3], someRoute[4]
                     globalMapPoints = 0
 
@@ -372,7 +365,7 @@ class Agent:
                             temp_globalmap[i[0]][i[1]] = ' '
                         temp_AstarMap = AstarMap(temp_globalmap)
 
-                        #Calculate map points as if this route was excuted by the agent
+                        #Calculate map Scores as if this route was excuted by the agent
                         #Begins deepsearch to determine best route based on the new map states. 
                         globalMapPoints = self.deepSearch_globalMapPoints(temp_AstarMap, temp_globalmap, starting_visibleItems, goal, new_items, new_raftstate, search_level, new_stone_coordinates)                 
                         if globalMapPoints < 0:
@@ -380,7 +373,7 @@ class Agent:
                         #Store the value of the route's future global map state 
                         self.addDeepMapValues(start, goal, new_stone_coordinates, items, globalMapPoints)
 
-                    #Compares map points to best route. Saves if new route provides better future state points.  
+                    #Compares map Scores to best route. Saves if new route provides better future state Scores.  
                     if globalMapPoints >= max_deepMapPoints:
                         max_deepMapPoints = globalMapPoints
                         bestRoute = copy.deepcopy(someRoute[0])
@@ -395,7 +388,7 @@ class Agent:
                 bestRoute = currRoute.copy()
                 bestRouteStones = currRouteStones.copy()
 
-            #Points system for Treasure->Home Path Detection. 
+            #Scores system for Treasure->Home Path Detection. 
             if obstacle == '$':
                 temp_DS_map = AstarMap(globalmap)
                 homesearch = self.astarMinimum(temp_DS_map, goal, [80,80], items, 0)
@@ -423,7 +416,7 @@ class Agent:
         
         removecoordinatesList = []
         
-        # Calculate the points for visible coordinates only
+        # Calculate the Scores for visible coordinates only
         for coordinate in self.visibleCoordinates:
             x, y = coordinate[0], coordinate[1]
             obstacle = self.global_map_obstacles[x][y] 
@@ -432,7 +425,7 @@ class Agent:
             if self.update_global_values_flag == 0 and obstacle in self.items:
                 continue
             
-            # Water is given negative points if the agent has no raft, no stones and is not on a raft
+            # Water is given negative Scores if the agent has no raft, no stones and is not on a raft
             if obstacle == '~' and self.items['r'] < 1 and self.items['o'] < 1 and (self.onRaft == 0):
                 self.top_global_map_points[x][y] = -500000000
                 continue
@@ -444,7 +437,7 @@ class Agent:
             # These are sent to the the calculateTotalCoord Function below. 
             totalPoints, remove_flag, reachPoints, coordPoints = self.calculateTotalCoordPoints(x, y, astar_memory, self.global_map_obstacles, self.onRaft, self.items, self.position)
 
-            # Save points for the coordinate
+            # Save Scores for the coordinate
             self.top_global_map_points[x][y] = totalPoints
 
             if remove_flag:
@@ -458,9 +451,9 @@ class Agent:
         self.update_global_values_flag = 0
 
     #------------------------------------------------------------------------------------#
-    # calculateTotalCoordPoints: Calculates the TOTAL points for a coordinate 
+    # calculateTotalCoordPoints: Calculates the TOTAL Scores for a coordinate 
     #  
-    # All coordinates are assigned points based on its reachability (reachPoints) and importance to the agent (coordPoints)
+    # All coordinates are assigned Scores based on its reachability (reachPoints) and importance to the agent (coordPoints)
     # Reachability is determine using whether astar search can generate a path with/without any items.
     # Coordinates that do not require items are higher in value/priority 
     # Importance to the agent is calculated in the calculateCoordPoints() function below. 
@@ -477,14 +470,14 @@ class Agent:
         
         #reachPoints depedent on two factors: Reachable with/without items. 
         if len(astar_memory[0]) > 0: #Path of length zero means coordinate is not reachable
-            if astar_memory[1]: #if list is empty, then it requires no items. This gives it 50 points. 
+            if astar_memory[1]: #if list is empty, then it requires no items. This gives it 50 Scores. 
                 reachPoints = 10
             else:
                 reachPoints = 50
-            coordPoints = self.calculateCoordPoints([x,y],global_map, onRaft, items, position) #Calculates coordinate points using function
+            coordPoints = self.calculateCoordPoints([x,y],global_map, onRaft, items, position) #Calculates coordinate Scores using function
             totalPoints = reachPoints + coordPoints
         else:
-            #print('{},{} is not reachhable'.format(x,y))
+            #print('{},{} is not reachable'.format(x,y))
             totalPoints = -10002
 
         #Land ignored if it doesnt exceed threshold
@@ -496,23 +489,23 @@ class Agent:
         return totalPoints, remove_flag, reachPoints, coordPoints
 
     #------------------------------------------------------------------------------------#
-    # calculateCoordPoints: Calculates the coordinate points for a given coordinate 
+    # calculateCoordPoints: Calculates the coordinate Scores for a given coordinate 
     #  
-    # Below is the point setup for each coordinate type (land, water, item)
+    # Below is the Score setup for each coordinate type (land, water, item)
     #------------------------------------------------------------------------------------#
     
-    def calculateCoordPoints(self, coordinate, global_map, onRaft, items, position): # assigns points to each coordinate on the global map
+    def calculateCoordPoints(self, coordinate, global_map, onRaft, items, position): # assigns Scores to each coordinate on the global map
         x = coordinate[0]
         y = coordinate[1]
         obstacle = global_map[x][y]
 
-        #Points setup for key, axe and stone. Varies whether agent is on a raft or on land
+        #Scores setup for key, axe and stone. Varies whether agent is on a raft or on land
         if obstacle in ['k','a','o']:  #return 10 pts if new items collectable without losing items
             if onRaft:
                 return 8
             else:
                 return 20
-        #Points setup for Tree and Door. Dependant on whether agent has axe or key 
+        #Scores setup for Tree and Door. Dependant on whether agent has axe or key 
         elif obstacle in ['T','-']: # returns 10 pts if agent contains pre-req to collect new items
             if obstacle == 'T' and self.items['a'] > 0:
                 if onRaft:
@@ -526,27 +519,27 @@ class Agent:
                     return 20
             else:
                 return 0
-        #Points setup for land. Dependent on surrounding unknown space (?), water and raft state  
+        #Scores setup for land. Dependent on surrounding unknown space (?), water and raft state  
         elif obstacle == ' ': # values exploring land depending on whether agent is currently on a raft
             if onRaft:
-                points = -5
+                Scores = -5
             else:
-                points = 0
+                Scores = 0
             for x_1 in range(-2,3):
                 for y_2 in range(-2,3):
                     if (x + x_1 in range(self.global_map_size)) and (y + y_2 in range(self.global_map_size)):
                         surrounding_obstacle = self.global_map_obstacles[x + x_1][y + y_2]
                         if surrounding_obstacle == '?':
                             if onRaft:
-                                points += 0.2
+                                Scores += 0.2
                             else:
-                                points += 1
+                                Scores += 1
                         if surrounding_obstacle == '~':
-                            points += 0.2
-            return points
-        #Points setup for water. Dependent on surrounding unknown space (?), water and current items/raft
+                            Scores += 0.2
+            return Scores
+        #Scores setup for water. Dependent on surrounding unknown space (?), water and current items/raft
         elif obstacle == '~': # values exploring the water depending on whether agent is currently on a raft
-            points = 0
+            Scores = 0
             if (items['o'] < 1 and items['r'] < 1) and onRaft == 0:
                 return 0
             for x_1 in range(-2,3):
@@ -555,15 +548,15 @@ class Agent:
                         surrounding_obstacle = global_map[x + x_1][y + y_2]
                         if surrounding_obstacle == '?':
                             if onRaft:
-                                points += 1.5
+                                Scores += 1.5
                             else:
-                                points += 0.5
-            return points
-        #Points setup for treasure. Agent only goes for treasure if it can plot a path home
+                                Scores += 0.5
+            return Scores
+        #Scores setup for treasure. Agent only goes for treasure if it can plot a path home
         elif obstacle == '$':
             if self.checkRouteHome(position, [x,y]):
                 return 999999999
-            return -1000
+            return -10000
         return 0
 
     #------------------------------------------------------------------------------------#
