@@ -43,6 +43,7 @@ choose a port number between 1025 and 65535 - let's suppose you choose 31415.
 type this in one window:
 
 javac *.java
+
 java Step -p 31415 -i s0.in
 
 type this in the other window:
