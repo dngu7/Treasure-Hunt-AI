@@ -33,27 +33,6 @@ If the agent attempts to move off the edge of the environment, it dies.
 
 To win the game, the agent must pick up the treasure and then return to its initial location.
 
-# Running as a Single Process #
-
-javac *.java
-java Step -i s0.in
-You should then see something like this:
-~~~~~~~~~~~~~~~~~~~~~~~~
-~~********************~~
-~~* a   *     T   o  *~~
-~~* o *-*  v  **     *~~
-~~****          *~~* *~~
-~~ oT *    k     *  * ~~
-~~*~~*           *~~  ~~
-~~  $ ************    ~~
-~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Enter Action(s): 
-This allows you to play the role of the agent by typing commands at the keyboard (followed by <Enter>). Note:
-a key can be used to open any door; once a door is opened, it has effectively been removed from the environment and can never be "closed" again.
-an axe or key can be used multiple times, but each stone can be placed in the water only once.
-C or U instructions will fail (have no effect) if the appropriate tool is not held, or if the location immediately in front of the agent does not contain an appropriate obstacle.
 
 # Running in Network Mode #
 
@@ -62,6 +41,7 @@ Follow these instructions to see how the game runs in network mode:
 open two windows, and cd to the src directory in both of them.
 choose a port number between 1025 and 65535 - let's suppose you choose 31415.
 type this in one window:
+javac *.java
 java Step -p 31415 -i s0.in
 type this in the other window:
 python3 agent.py -p 31415
