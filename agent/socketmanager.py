@@ -1,6 +1,10 @@
+#!/usr/bin/python3.6
+#-------------------------------------------------------------------------#
+# TCP Socket implementation in Python                                     #
+# Opens a TCP socket, sends commands and receives a map for the agent     #
+#-------------------------------------------------------------------------#
 
 import socket
-
 
 class TCPSocketManager:
     def __init__(self, ip_address, port_no, view_size):

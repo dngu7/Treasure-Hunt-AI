@@ -1,6 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/python3.6
 
-from pprint import pprint
+#-----------------------------------------------------------------------------------------------#
+# Acknowledgement                                                                               #
+# Resource: https://stackoverflow.com/questions/8372399/zip-with-list-output-instead-of-tuple   #
+# - resource used are: rotate and printMatrix                                                   #
+#-----------------------------------------------------------------------------------------------#
+
+
+#-----------------------------------------------------------------------------------------------#
+# rotate function                                                                               #
+# Rotation function rotates a given array matrix based in the degree provided                   #
+# Degree has to be one of 0, 90, 180, 270, 360                                                  #
+#-----------------------------------------------------------------------------------------------#
 
 def rotate(matrix, degree):
     if abs(degree) not in [0, 90, 180, 270, 360]:
@@ -16,16 +27,5 @@ def rotate(matrix, degree):
     else:
         z = zip(*matrix)[::-1]
         matrix = [list(a) for a in z]
-        matrix = rotate(matrix, degree+90)
-        
-    #matrix = [list(a) for a in z]
-    
+        matrix = rotate(matrix, degree+90)    
     return matrix
-    
-# https://stackoverflow.com/questions/8372399/zip-with-list-output-instead-of-tuple
-    
-def printMatrix(matrix):
-    for i in range(len(matrix)):
-            for j in range(len(matrix[i])):
-                print(matrix[i][j], end="")
-            print('')
