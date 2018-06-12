@@ -38,10 +38,13 @@ To win the game, the agent must pick up the treasure and then return to its init
 
 Follow these instructions to see how the game runs in network mode:
 
-open two windows, and cd to the src directory in both of them.
+Open two windows, and cd to the src directory in both of them.
 choose a port number between 1025 and 65535 - let's suppose you choose 31415.
 type this in one window:
+
 javac *.java
 java Step -p 31415 -i s0.in
+
 type this in the other window:
+
 python3 agent.py -p 31415
